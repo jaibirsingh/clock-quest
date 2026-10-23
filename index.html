@@ -1,0 +1,2359 @@
+<meta charset="utf-8">
+<title>Clock Quest</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+/* Layout: the game (big clock + Miro's card) is the hero. Each game has its own colour, which also paints the clock rim. Single bright theme by choice. */
+:root {
+  --sky: #BFE4FF;
+  --dot: #DDF1FF;
+  --card: #FFFFFF;
+  --ink: #16324F;
+  --muted: #4F6A86;
+  --line: #B7D6EE;
+  --c-play: #1E9E45;
+  --c-read: #2F6FE0;
+  --c-set: #EE7A12;
+  --c-speed: #E2335F;
+  --c-story: #0E8F9C;
+  --mode: #1E9E45;
+  --minute: #E63946;
+  --hour: #1D4ED8;
+  --leaf: #1E9E45;
+  --leaf-soft: #DDF5E3;
+  --sun: #FFC93C;
+  --sun-soft: #FFF6D6;
+  --past: #FFEFB8;
+  --to: #D3ECFF;
+  --bad: #D62839;
+  --bad-soft: #FDE2E4;
+  --bubble: #EEF7FF;
+  --display: "Baloo 2", "Trebuchet MS", system-ui, sans-serif;
+  --body: "Nunito", "Segoe UI", system-ui, sans-serif;
+}
+html { background: var(--sky); }
+.center { text-align: center; justify-content: center; }
+.errbox { margin: 0; background: #FDE2E4; color: #8A1424; border: 2px solid #D62839; border-radius: 14px; padding: 8px 12px; font-weight: 800; overflow-wrap: anywhere; }
+/* Anything marked hidden stays hidden, even when the file is opened on its own. */
+[hidden] { display: none !important; }
+body {
+  background-color: var(--sky);
+  background-image: radial-gradient(var(--dot) 3px, transparent 3.5px);
+  background-size: 34px 34px;
+  color: var(--ink);
+  font-family: var(--body);
+  font-size: 16px;
+  line-height: 1.4;
+  padding-left: 16px;
+  padding-right: 16px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-top: 14px;
+  padding-bottom: 48px;
+}
+button { font: inherit; color: inherit; }
+button:focus-visible, input:focus-visible, summary:focus-visible { outline: 3px solid var(--hour); outline-offset: 2px; }
+
+.wrap { max-width: 1060px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+
+/* top bar */
+.top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+.brand { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.brand h1 { font-family: var(--display); font-weight: 800; font-size: 2.3rem; line-height: 1; margin: 0; }
+.brand h1 .q { color: var(--c-set); }
+.brand small { font-weight: 800; color: var(--muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.chip { position: relative; display: inline-flex; align-items: center; gap: 6px; background: var(--card); border-radius: 999px; padding: 4px 14px; font-weight: 800; box-shadow: 0 3px 0 var(--line); }
+.chip b { font-family: var(--display); font-size: 1.3rem; font-variant-numeric: tabular-nums; }
+.chip .ic { font-size: 1.2rem; }
+.chip.stars .ic { color: var(--sun); }
+.chip.btn { border: 0; cursor: pointer; font-size: 1.2rem; padding: 6px 12px; }
+.chip.bump { animation: bump 0.4s ease; }
+@keyframes bump { 0% { transform: scale(1); } 40% { transform: scale(1.18); } 100% { transform: scale(1); } }
+
+/* game picker */
+.tabs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+.tab {
+  --c: var(--c-play);
+  background: var(--card); border: 3px solid var(--card); border-radius: 18px;
+  padding: 8px 10px; cursor: pointer; box-shadow: 0 4px 0 var(--line);
+  display: flex; align-items: center; gap: 10px; text-align: left; min-width: 0;
+}
+.tab[data-mode="read"] { --c: var(--c-read); }
+.tab[data-mode="set"] { --c: var(--c-set); }
+.tab[data-mode="speed"] { --c: var(--c-speed); }
+.tab[data-mode="story"] { --c: var(--c-story); }
+.tab .ti { width: 40px; height: 40px; flex: none; border-radius: 50%; background: var(--c); color: #FFFFFF; display: grid; place-items: center; font-size: 1.3rem; }
+.tab .tname { font-family: var(--display); font-weight: 800; font-size: 1.2rem; line-height: 1.1; min-width: 0; }
+.tab[aria-selected="true"] { background: var(--c); border-color: var(--c); color: #FFFFFF; box-shadow: 0 4px 0 rgba(22, 50, 79, 0.35); }
+.tab[aria-selected="true"] .ti { background: #FFFFFF; color: var(--c); }
+.tab:active { transform: translateY(2px); }
+
+.settings { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.seg { display: inline-flex; background: var(--card); border-radius: 999px; padding: 4px; box-shadow: 0 3px 0 var(--line); }
+.seg button { border: 0; background: transparent; border-radius: 999px; padding: 5px 14px; font-weight: 800; cursor: pointer; color: var(--muted); }
+.seg button[aria-pressed="true"] { background: var(--ink); color: #FFFFFF; }
+.switch { display: inline-flex; align-items: center; gap: 8px; font-weight: 800; background: var(--card); border-radius: 999px; padding: 5px 14px; box-shadow: 0 3px 0 var(--line); cursor: pointer; }
+.switch input { width: 20px; height: 20px; accent-color: var(--c-set); }
+
+/* the game */
+.stage {
+  display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 14px; align-items: stretch;
+  background: var(--mode); border-radius: 30px; padding: 14px;
+  box-shadow: 0 8px 0 rgba(22, 50, 79, 0.25);
+}
+@media (max-width: 780px) { .stage { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 900px) {
+  .tab { flex-direction: column; text-align: center; gap: 4px; }
+  .tab .tname { font-size: 1.05rem; }
+}
+@media (max-width: 640px) {
+  .tabs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tab { flex-direction: row; text-align: left; gap: 10px; }
+  .tab:last-child { grid-column: 1 / -1; }
+  .brand h1 { font-size: 2rem; }
+}
+.card { background: var(--card); border-radius: 24px; padding: 16px; min-width: 0; }
+.shadowcard { box-shadow: 0 5px 0 var(--line); }
+
+.clockcard { display: flex; flex-direction: column; gap: 10px; align-items: center; justify-content: center; }
+/* The clock sits in a square box. The padding trick keeps the box square on every
+   browser, so the clock can't shrink to nothing on iPhone Safari. */
+.clockbox { position: relative; width: 100%; max-width: 440px; flex: none; align-self: center; }
+.clockbox::before { content: ""; display: block; padding-top: 100%; }
+#clock { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: block; overflow: visible; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.clockcard.live #clock { cursor: grab; }
+.clockcard.live #clock:active { cursor: grabbing; }
+.nudges { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.nudges button { border: 2px solid var(--line); background: var(--card); border-radius: 12px; padding: 5px 12px; font-weight: 800; cursor: pointer; }
+.nudges button:active { background: var(--bubble); }
+.legend { margin: 0; display: flex; flex-wrap: wrap; gap: 6px 14px; justify-content: center; font-weight: 800; color: var(--muted); font-size: 0.9rem; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.sw { display: inline-block; height: 7px; border-radius: 4px; }
+.sw.h { width: 20px; background: var(--hour); }
+.sw.m { width: 34px; background: var(--minute); }
+
+.rim { fill: var(--mode); }
+.face { fill: #FFFFFF; }
+.tick { stroke: #8EA3B8; stroke-width: 1.5; }
+.tick.major { stroke: var(--ink); stroke-width: 3; }
+.num { font-family: var(--display); font-weight: 800; font-size: 25px; fill: var(--ink); text-anchor: middle; }
+.minlab { font-family: var(--body); font-weight: 800; font-size: 11px; fill: #FFFFFF; text-anchor: middle; }
+.pastzone { fill: var(--past); }
+.tozone { fill: var(--to); }
+.zonelabel { font-family: var(--body); font-weight: 800; font-size: 12px; fill: var(--muted); text-anchor: middle; letter-spacing: 0.1em; }
+.handHour { stroke: var(--hour); stroke-width: 11; stroke-linecap: round; }
+.handMin { stroke: var(--minute); stroke-width: 7; stroke-linecap: round; }
+.cap { fill: var(--ink); }
+#clock.wiggle { animation: wiggle 0.5s ease; }
+@keyframes wiggle { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-4deg); } 75% { transform: rotate(4deg); } }
+
+.panel { display: flex; flex-direction: column; gap: 12px; }
+.mascot { display: flex; align-items: flex-start; gap: 10px; }
+.bird { width: 70px; height: 84px; flex: none; }
+.bubble { position: relative; background: var(--bubble); border: 2px solid var(--line); border-radius: 16px; padding: 8px 12px; font-weight: 800; font-size: 1.05rem; min-width: 0; flex: 1; margin-top: 14px; }
+.bubble::before { content: ""; position: absolute; left: -9px; top: 16px; width: 14px; height: 14px; background: var(--bubble); border-left: 2px solid var(--line); border-bottom: 2px solid var(--line); transform: rotate(45deg); }
+.bird.hop { animation: hop 0.45s ease; }
+@keyframes hop { 0% { transform: translateY(0); } 40% { transform: translateY(-12px); } 100% { transform: translateY(0); } }
+
+.prompt { margin: 0; font-family: var(--display); font-weight: 800; font-size: 1.7rem; line-height: 1.1; text-wrap: balance; }
+.tag { display: inline-block; background: var(--mode); color: #FFFFFF; font-weight: 800; border-radius: 999px; padding: 1px 10px; font-size: 0.85rem; vertical-align: middle; }
+.target { font-family: var(--display); font-weight: 800; font-size: 2.6rem; line-height: 1.05; color: var(--mode); margin: 0; }
+
+.options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.options.three { grid-template-columns: minmax(0, 1fr); }
+.opt {
+  background: var(--card); border: 3px solid var(--line); border-radius: 16px; padding: 12px 10px;
+  font-family: var(--display); font-weight: 800; font-size: 1.4rem; line-height: 1.15; cursor: pointer;
+  box-shadow: 0 4px 0 var(--line); min-width: 0; overflow-wrap: anywhere;
+}
+.opt:nth-child(4n+1) { border-color: #9CD6AE; box-shadow: 0 4px 0 #9CD6AE; }
+.opt:nth-child(4n+2) { border-color: #A8C4F5; box-shadow: 0 4px 0 #A8C4F5; }
+.opt:nth-child(4n+3) { border-color: #F7C38F; box-shadow: 0 4px 0 #F7C38F; }
+.opt:nth-child(4n+4) { border-color: #F2A4BA; box-shadow: 0 4px 0 #F2A4BA; }
+.opt:hover { transform: translateY(-1px); }
+.opt:active { transform: translateY(2px); }
+.opt.right { background: var(--leaf-soft); border-color: var(--leaf); box-shadow: 0 4px 0 var(--leaf); }
+.opt.wrong { background: var(--bad-soft); border-color: var(--bad); color: var(--bad); text-decoration: line-through; box-shadow: none; cursor: default; }
+.opt:disabled { cursor: default; }
+
+.feedback { border-radius: 14px; padding: 8px 12px; font-weight: 800; margin: 0; }
+.feedback.good { background: var(--leaf-soft); color: #145A27; }
+.feedback.bad { background: var(--bad-soft); color: #8A1424; }
+.feedback.info { background: var(--bubble); color: var(--ink); }
+
+.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.primary { border: 0; background: var(--mode); color: #FFFFFF; font-family: var(--display); font-weight: 800; font-size: 1.25rem; border-radius: 999px; padding: 8px 26px; cursor: pointer; box-shadow: 0 4px 0 rgba(22, 50, 79, 0.35); }
+.primary:active { transform: translateY(2px); box-shadow: 0 2px 0 rgba(22, 50, 79, 0.35); }
+.ghost { border: 2px solid var(--line); background: var(--card); font-weight: 800; border-radius: 999px; padding: 7px 18px; cursor: pointer; }
+
+.readout { background: var(--ink); color: #FFFFFF; border-radius: 18px; padding: 10px 16px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 16px; }
+.readout .digital { font-family: var(--display); font-weight: 800; font-size: 2.8rem; line-height: 1; font-variant-numeric: tabular-nums; color: var(--sun); }
+.readout .words { font-family: var(--display); font-weight: 700; font-size: 1.45rem; line-height: 1.1; }
+
+#panelBody { flex: 1; }
+.readout.big { flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 8px; padding: 26px 16px; flex: 1; }
+.readout.big .digital { font-size: 5rem; }
+.readout.big .words { font-size: 2.1rem; text-wrap: balance; }
+.sayit { border: 0; background: var(--sun); color: var(--ink); font-family: var(--display); font-weight: 800; font-size: 1.2rem; border-radius: 999px; padding: 6px 22px; cursor: pointer; box-shadow: 0 4px 0 #C99A12; margin-top: 6px; }
+.sayit:active { transform: translateY(2px); box-shadow: 0 2px 0 #C99A12; }
+.secrets { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 0; padding: 0; list-style: none; }
+.secrets li { border-radius: 14px; padding: 8px 10px; font-weight: 800; font-size: 0.95rem; line-height: 1.25; min-width: 0; }
+.secrets li:nth-child(1) { background: #FFE3E5; }
+.secrets li:nth-child(2) { background: #DDF5E3; }
+.secrets li:nth-child(3) { background: #FFF2C6; }
+.secrets li:nth-child(4) { background: #DCE8FF; }
+.secrets li:nth-child(5) { background: #FFE7D1; grid-column: 1 / -1; }
+.challenge { background: var(--sun-soft); border: 2px dashed var(--sun); border-radius: 14px; padding: 8px 12px; font-weight: 800; margin: 0; }
+
+.timebar { height: 16px; background: var(--bubble); border-radius: 999px; overflow: hidden; border: 2px solid var(--line); }
+.timebar div { height: 100%; background: var(--mode); width: 100%; }
+.scoreline { display: flex; justify-content: space-between; font-weight: 800; font-size: 1.1rem; font-variant-numeric: tabular-nums; }
+.bigscore { font-family: var(--display); font-weight: 800; font-size: 4rem; line-height: 1; color: var(--mode); margin: 0; }
+.muted { margin: 0; color: var(--muted); font-weight: 800; }
+
+/* lower area */
+.lower { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+.lower .wide { grid-column: 1 / -1; }
+@media (max-width: 780px) { .lower { grid-template-columns: minmax(0, 1fr); } }
+.lower h2, .grownups summary { font-family: var(--display); font-weight: 800; font-size: 1.3rem; margin: 0; }
+.wardrobe { display: grid; grid-template-columns: repeat(auto-fill, minmax(62px, 1fr)); gap: 8px; margin-top: 10px; }
+.wear { border: 2px solid var(--line); background: var(--card); border-radius: 14px; padding: 6px 2px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px; font-weight: 800; font-size: 0.75rem; min-width: 0; }
+.wear .wi { font-size: 1.5rem; line-height: 1.2; }
+.wear[aria-pressed="true"] { border-color: var(--c-set); background: #FFF0E0; }
+.wear:disabled { cursor: default; opacity: 0.5; }
+.badgegrid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
+@media (max-width: 1000px) { .badgegrid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+
+/* Miro's day */
+.path { display: flex; flex-wrap: wrap; gap: 6px; }
+.stop { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: #E8EEF4; font-size: 1rem; opacity: 0.45; }
+.stop.done { background: var(--leaf-soft); opacity: 1; }
+.stop.now { background: var(--mode); opacity: 1; box-shadow: 0 0 0 3px #FFFFFF, 0 0 0 5px var(--mode); transform: scale(1.12); }
+.scene { display: flex; align-items: center; gap: 14px; }
+.scene .big { font-size: 3.6rem; line-height: 1; flex: none; }
+.scene .what { font-family: var(--display); font-weight: 800; font-size: 1.4rem; line-height: 1.1; margin: 0; }
+.party { font-size: 4rem; line-height: 1; margin: 0; text-align: center; }
+
+/* race extras */
+.countdown { font-family: var(--display); font-weight: 800; font-size: 6rem; line-height: 1; color: var(--mode); text-align: center; margin: 10px 0; }
+.countdown.pop { animation: pop 0.6s ease; }
+@keyframes pop { 0% { transform: scale(0.4); opacity: 0; } 50% { transform: scale(1.15); opacity: 1; } 100% { transform: scale(1); } }
+.combo { color: var(--c-speed); }
+@media (max-width: 640px) { .badgegrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.badge { border: 2px solid var(--line); border-radius: 14px; padding: 6px 8px; display: flex; gap: 8px; align-items: center; min-width: 0; }
+.badge .bi { width: 34px; height: 34px; flex: none; border-radius: 50%; display: grid; place-items: center; font-size: 1.1rem; background: #E8EEF4; filter: grayscale(1); opacity: 0.55; }
+.badge.got { border-color: var(--sun); background: var(--sun-soft); }
+.badge.got .bi { background: var(--sun); filter: none; opacity: 1; }
+.badge .bt { min-width: 0; }
+.badge .bt b { display: block; font-family: var(--display); font-size: 0.98rem; line-height: 1.1; }
+.badge .bt span { font-size: 0.75rem; color: var(--muted); font-weight: 700; line-height: 1.15; display: block; }
+
+.grownups summary { cursor: pointer; font-size: 1.05rem; }
+.grownups ul { margin: 8px 0 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; max-width: 65ch; font-weight: 600; }
+
+.toast {
+  position: fixed; left: 50%; transform: translateX(-50%);
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  background: var(--ink); color: #FFFFFF; font-weight: 800; padding: 10px 18px; border-radius: 999px;
+  box-shadow: 0 6px 20px rgba(22, 50, 79, 0.3); z-index: 20; max-width: calc(100% - 32px); text-align: center;
+}
+.flyer { position: fixed; z-index: 18; pointer-events: none; font-family: var(--display); font-weight: 800; font-size: 1.6rem; color: var(--sun); text-shadow: 0 2px 0 var(--ink); animation: fly 0.9s ease-out forwards; }
+@keyframes fly { 0% { transform: translate(-50%, 0) scale(0.8); opacity: 0; } 20% { opacity: 1; transform: translate(-50%, -10px) scale(1.2); } 100% { transform: translate(-50%, -70px) scale(1); opacity: 0; } }
+#confetti { position: fixed; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; pointer-events: none; z-index: 40; }
+
+
+/* scoring: rank bar, streak multiplier, chests, stickers, pop-up card */
+.rankbar { display: flex; align-items: center; gap: 12px; background: var(--ink); color: #FFFFFF; border-radius: 20px; padding: 8px 16px; box-shadow: 0 4px 0 rgba(22, 50, 79, 0.35); }
+.rankicon { font-size: 2.2rem; line-height: 1; flex: none; }
+.rankmid { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+.rankrow { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 2px 12px; }
+.rankrow b { font-family: var(--display); font-size: 1.3rem; line-height: 1.1; color: var(--sun); }
+.rankrow span { font-weight: 800; font-size: 0.9rem; opacity: 0.9; }
+.rankmeter { height: 14px; border-radius: 999px; background: rgba(255, 255, 255, 0.18); overflow: hidden; }
+.rankmeter div { height: 100%; width: 0%; border-radius: 999px; background: linear-gradient(90deg, #FFC93C, #EE7A12, #E2335F); transition: width 0.6s ease; }
+.mult { background: var(--c-speed); color: #FFFFFF; border-radius: 999px; padding: 0 8px; font-family: var(--display); font-size: 1rem; }
+.chip.hot { box-shadow: 0 3px 0 var(--c-speed); }
+.chip.chest { background: var(--sun); box-shadow: 0 3px 0 #C99A12; animation: nudge 1.4s ease-in-out infinite; }
+@keyframes nudge { 0%, 70%, 100% { transform: rotate(0); } 78% { transform: rotate(-10deg); } 86% { transform: rotate(10deg); } 94% { transform: rotate(-6deg); } }
+.seg button small { font-size: 0.75rem; color: var(--c-set); }
+.seg button[aria-pressed="true"] small { color: var(--sun); }
+.lower h2 .count { font-family: var(--body); font-size: 0.9rem; color: var(--muted); }
+.stickergrid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; margin-top: 10px; }
+@media (max-width: 420px) { .stickergrid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.sticker { border: 2px dashed var(--line); border-radius: 14px; padding: 4px 2px; display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; }
+.sticker .si { font-size: 1.6rem; line-height: 1.2; color: var(--line); font-family: var(--display); font-weight: 800; }
+.sticker .sn { font-size: 0.65rem; font-weight: 800; color: var(--muted); text-align: center; line-height: 1.1; overflow-wrap: anywhere; }
+.sticker.got { border-style: solid; border-color: var(--c-story); background: #E3F6F7; }
+.overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 30; background: rgba(22, 50, 79, 0.6); display: flex; align-items: center; justify-content: center; padding: 16px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.ovcard { background: var(--card); border-radius: 28px; padding: 22px 20px; text-align: center; width: 100%; max-width: 340px; display: flex; flex-direction: column; align-items: center; gap: 6px; box-shadow: 0 8px 0 var(--c-set); animation: pop 0.5s ease; }
+.ovbig { font-size: 5.5rem; line-height: 1.1; }
+.ovbig.shake { animation: shake 1s ease; }
+@keyframes shake { 0%, 100% { transform: rotate(0) scale(1); } 15% { transform: rotate(-12deg); } 30% { transform: rotate(12deg); } 45% { transform: rotate(-12deg); } 60% { transform: rotate(12deg) scale(1.1); } 80% { transform: rotate(0) scale(1.25); } }
+.ovtitle { font-family: var(--display); font-weight: 800; font-size: 2rem; line-height: 1.1; margin: 0; color: var(--c-set); text-wrap: balance; }
+.ovtext { margin: 0 0 8px; font-weight: 800; font-size: 1.1rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  .bird.hop, .chip.bump, #clock.wiggle, .flyer, .countdown.pop, .chip.chest, .ovcard, .ovbig.shake { animation: none; }
+  .rankmeter div { transition: none; }
+  .flyer { display: none; }
+}
+</style>
+
+<div class="wrap" id="app">
+  <p class="errbox" id="errBox" hidden></p>
+  <noscript><p class="errbox">This viewer has switched off the game's code, so the clock can't move. Open the game file in Safari or Chrome instead.</p></noscript>
+  <header class="top">
+    <div class="brand">
+      <h1>Clock <span class="q">Quest</span></h1>
+      <small>Time &middot; Unit 5</small>
+    </div>
+    <div class="chips">
+      <div class="chip stars" id="starChip"><span class="ic">&#9733;</span><b id="starCount">0</b></div>
+      <button class="chip btn chest" id="chestBtn" type="button" hidden aria-label="Open treasure chest"><span class="ic">&#127873;</span><b id="chestCount">1</b></button>
+      <div class="chip" id="streakChip" title="Right answers in a row"><span class="ic">&#128293;</span><b id="streakCount">0</b><span class="mult" id="multPill" hidden>x2</span></div>
+      <button class="chip btn" id="soundBtn" type="button" aria-label="Sound on">&#128266;</button>
+    </div>
+  </header>
+
+  <div class="rankbar" aria-label="Your rank">
+    <span class="rankicon" id="rankIcon">&#128035;</span>
+    <div class="rankmid">
+      <div class="rankrow"><b id="rankName">Tick Tock Chick</b><span id="rankNext"></span></div>
+      <div class="rankmeter"><div id="rankFill"></div></div>
+    </div>
+  </div>
+
+  <nav class="tabs" aria-label="Games">
+    <button class="tab" type="button" data-mode="play"><span class="ti">&#127744;</span><span class="tname">Play clock</span></button>
+    <button class="tab" type="button" data-mode="read"><span class="ti">&#128064;</span><span class="tname">What time?</span></button>
+    <button class="tab" type="button" data-mode="set"><span class="ti">&#9995;</span><span class="tname">Set it!</span></button>
+    <button class="tab" type="button" data-mode="story"><span class="ti">&#127774;</span><span class="tname">Miro's day</span></button>
+    <button class="tab" type="button" data-mode="speed"><span class="ti">&#9889;</span><span class="tname">Beat the clock</span></button>
+  </nav>
+
+  <div class="settings">
+    <div class="seg" role="group" aria-label="Level">
+      <button type="button" data-level="easy">Easy <small>&#9733;1</small></button>
+      <button type="button" data-level="medium">Medium <small>&#9733;2</small></button>
+      <button type="button" data-level="hard">Hard <small>&#9733;3</small></button>
+    </div>
+    <label class="switch" for="helperToggle"><input type="checkbox" id="helperToggle"> Helper</label>
+  </div>
+
+  <section class="stage" aria-label="Game">
+    <div class="card clockcard" id="clockCard">
+      <div class="clockbox"><svg id="clock" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300" width="300" height="300" role="img" aria-label="Clock">
+        <circle class="rim" id="clockRim" cx="150" cy="150" r="147" fill="#1E9E45"/>
+        <circle class="face" cx="150" cy="150" r="126" fill="#FFFFFF"/>
+        <g id="helper">
+        <path class="pastzone" d="M150 150 L150 24 A126 126 0 0 1 150 276 Z" fill="#FFEFB8"/>
+        <path class="tozone" d="M150 150 L150 276 A126 126 0 0 1 150 24 Z" fill="#D3ECFF"/>
+        <text class="zonelabel" x="196" y="154" fill="#4F6A86" font-family="Nunito, 'Segoe UI', sans-serif" font-weight="800" font-size="12" text-anchor="middle" letter-spacing="1.2">PAST</text>
+        <text class="zonelabel" x="104" y="154" fill="#4F6A86" font-family="Nunito, 'Segoe UI', sans-serif" font-weight="800" font-size="12" text-anchor="middle" letter-spacing="1.2">TO</text>
+        <text class="minlab" x="150.0" y="13.0" dy="0.35em" fill="#FFFFFF" font-family="Nunito, 'Segoe UI', sans-serif" font-weight="800" font-size="11" text-anchor="middle">0</text>
+        <text class="minlab" x="218.5" y="31.4" dy="0.35em" fill="#FFFFFF" font-family="Nunito, 'Segoe UI', sans-serif" font-weight="800" font-size="11" text-anchor="middle">5</text>
+        <text class="minlab" x="268.6" y="81.5" dy="0.35em" fill="#FFFFFF" font-family="Nunito, 'Segoe UI', sans-serif" font-weight="800" font-size="11" text-anchor="middle">10</text>
+        <text class="minlab" x="287.0" y="150.0" dy="0.35em" fill="#FFFFFF" font-family="Nunito, 'Segoe UI', sans-serif" font-weight="800" font-size="11" text-anchor="middle">15</text>
+        <text class="minlab" x="268.6" y="218.5" dy="0.35em" fill="#FFFFFF" font-family="Nunito, 'Segoe UI', sans-serif" font-weight="800" font-size="11" text-anchor="middle">20</text>
+        <text class="minlab" x="218.5" y="268.6" dy="0.35em" fill="#FFFFFF" font-family="Nunito, 'Segoe UI', sans-serif" font-weight="800" font-size="11" text-anchor="middle">25</text>
+        <text class="minlab" x="150.0" y="287.0" dy="0.35em" fill="#FFFFFF" font-family="Nunito, 'Segoe UI', sans-serif" font-weight="800" font-size="11" text-anchor="middle">30</text>
+        <text class="minlab" x="81.5" y="268.6" dy="0.35em" fill="#FFFFFF" font-family="Nunito, 'Segoe UI', sans-serif" font-weight="800" font-size="11" text-anchor="middle">35</text>
+        <text class="minlab" x="31.4" y="218.5" dy="0.35em" fill="#FFFFFF" font-family="Nunito, 'Segoe UI', sans-serif" font-weight="800" font-size="11" text-anchor="middle">40</text>
+        <text class="minlab" x="13.0" y="150.0" dy="0.35em" fill="#FFFFFF" font-family="Nunito, 'Segoe UI', sans-serif" font-weight="800" font-size="11" text-anchor="middle">45</text>
+        <text class="minlab" x="31.4" y="81.5" dy="0.35em" fill="#FFFFFF" font-family="Nunito, 'Segoe UI', sans-serif" font-weight="800" font-size="11" text-anchor="middle">50</text>
+        <text class="minlab" x="81.5" y="31.4" dy="0.35em" fill="#FFFFFF" font-family="Nunito, 'Segoe UI', sans-serif" font-weight="800" font-size="11" text-anchor="middle">55</text>
+        </g>
+        <line class="tick major" stroke="#16324F" stroke-width="3" x1="150.0" y1="40.0" x2="150.0" y2="26.0"/>
+        <line class="tick" stroke="#8EA3B8" stroke-width="1.5" x1="162.3" y1="32.6" x2="163.0" y2="26.7"/>
+        <line class="tick" stroke="#8EA3B8" stroke-width="1.5" x1="174.5" y1="34.6" x2="175.8" y2="28.7"/>
+        <line class="tick" stroke="#8EA3B8" stroke-width="1.5" x1="186.5" y1="37.8" x2="188.3" y2="32.1"/>
+        <line class="tick" stroke="#8EA3B8" stroke-width="1.5" x1="198.0" y1="42.2" x2="200.4" y2="36.7"/>
+        <line class="tick major" stroke="#16324F" stroke-width="3" x1="205.0" y1="54.7" x2="212.0" y2="42.6"/>
+        <line class="tick" stroke="#8EA3B8" stroke-width="1.5" x1="219.4" y1="54.5" x2="222.9" y2="49.7"/>
+        <line class="tick" stroke="#8EA3B8" stroke-width="1.5" x1="229.0" y1="62.3" x2="233.0" y2="57.9"/>
+        <line class="tick" stroke="#8EA3B8" stroke-width="1.5" x1="237.7" y1="71.0" x2="242.1" y2="67.0"/>
+        <line class="tick" stroke="#8EA3B8" stroke-width="1.5" x1="245.5" y1="80.6" x2="250.3" y2="77.1"/>
+        <line class="tick major" stroke="#16324F" stroke-width="3" x1="245.3" y1="95.0" x2="257.4" y2="88.0"/>
+        <line class="tick" stroke="#8EA3B8" stroke-width="1.5" x1="257.8" y1="102.0" x2="263.3" y2="99.6"/>
+        <line class="tick" stroke="#8EA3B8" stroke-width="1.5" x1="262.2" y1="113.5" x2="267.9" y2="111.7"/>
+        <line class="tick" stroke="#8EA3B8" stroke-width="1.5" x1="265.4" y1="125.5" x2="271.3" y2="124.2"/>
+        <line class="tick" stroke="#8EA3B8" stroke-width="1.5" x1="267.4" y1="137.7" x2="273.3" y2="137.0"/>
+        <line class="tick major" stroke="#16324F" stroke-width="3" x1="260.0" y1="150.0" x2="274.0" y2="150.0"/>
+        <line class="tick" stroke="#8EA3B8" stroke-width="1.5" x1="267.4" y1="162.3" x2="273.3" y2="163.0"/>
+        <line class="tick" stroke="#8EA3B8" stroke-width="1.5" x1="265.4" y1="174.5" x2="271.3" y2="175.8"/>
+        <line class="tick" stroke="#8EA3B8" stroke-width="1.5" x1="262.2" y1="186.5" x2="267.9" y2="188.3"/>
+        <line class="tick" stroke="#8EA3B8" stroke-width="1.5" x1="257.8" y1="198.0" x2="263.3" y2="200.4"/>
+        <line class="tick major" stroke="#16324F" stroke-width="3" x1="245.3" y1="205.0" x2="257.4" y2="212.0"/>
+        <line class="tick" stroke="#8EA3B8" stroke-width="1.5" x1="245.5" y1="219.4" x2="250.3" y2="222.9"/>
+        <line class="tick" stroke="#8EA3B8" stroke-width="1.5" x1="237.7" y1="229.0" x2="242.1" y2="233.0"/>
+        <line class="tick" stroke="#8EA3B8" stroke-width="1.5" x1="229.0" y1="237.7" x2="233.0" y2="242.1"/>
+        <line class="tick" stroke="#8EA3B8" stroke-width="1.5" x1="219.4" y1="245.5" x2="222.9" y2="250.3"/>
+        <line class="tick major" stroke="#16324F" stroke-width="3" x1="205.0" y1="245.3" x2="212.0" y2="257.4"/>
+        <line class="tick" stroke="#8EA3B8" stroke-width="1.5" x1="198.0" y1="257.8" x2="200.4" y2="263.3"/>
+        <line class="tick" stroke="#8EA3B8" stroke-width="1.5" x1="186.5" y1="262.2" x2="188.3" y2="267.9"/>
+        <line class="tick" stroke="#8EA3B8" stroke-width="1.5" x1="174.5" y1="265.4" x2="175.8" y2="271.3"/>
+        <line class="tick" stroke="#8EA3B8" stroke-width="1.5" x1="162.3" y1="267.4" x2="163.0" y2="273.3"/>
+        <line class="tick major" stroke="#16324F" stroke-width="3" x1="150.0" y1="260.0" x2="150.0" y2="274.0"/>
+        <line class="tick" stroke="#8EA3B8" stroke-width="1.5" x1="137.7" y1="267.4" x2="137.0" y2="273.3"/>
+        <line class="tick" stroke="#8EA3B8" stroke-width="1.5" x1="125.5" y1="265.4" x2="124.2" y2="271.3"/>
+        <line class="tick" stroke="#8EA3B8" stroke-width="1.5" x1="113.5" y1="262.2" x2="111.7" y2="267.9"/>
+        <line class="tick" stroke="#8EA3B8" stroke-width="1.5" x1="102.0" y1="257.8" x2="99.6" y2="263.3"/>
+        <line class="tick major" stroke="#16324F" stroke-width="3" x1="95.0" y1="245.3" x2="88.0" y2="257.4"/>
+        <line class="tick" stroke="#8EA3B8" stroke-width="1.5" x1="80.6" y1="245.5" x2="77.1" y2="250.3"/>
+        <line class="tick" stroke="#8EA3B8" stroke-width="1.5" x1="71.0" y1="237.7" x2="67.0" y2="242.1"/>
+        <line class="tick" stroke="#8EA3B8" stroke-width="1.5" x1="62.3" y1="229.0" x2="57.9" y2="233.0"/>
+        <line class="tick" stroke="#8EA3B8" stroke-width="1.5" x1="54.5" y1="219.4" x2="49.7" y2="222.9"/>
+        <line class="tick major" stroke="#16324F" stroke-width="3" x1="54.7" y1="205.0" x2="42.6" y2="212.0"/>
+        <line class="tick" stroke="#8EA3B8" stroke-width="1.5" x1="42.2" y1="198.0" x2="36.7" y2="200.4"/>
+        <line class="tick" stroke="#8EA3B8" stroke-width="1.5" x1="37.8" y1="186.5" x2="32.1" y2="188.3"/>
+        <line class="tick" stroke="#8EA3B8" stroke-width="1.5" x1="34.6" y1="174.5" x2="28.7" y2="175.8"/>
+        <line class="tick" stroke="#8EA3B8" stroke-width="1.5" x1="32.6" y1="162.3" x2="26.7" y2="163.0"/>
+        <line class="tick major" stroke="#16324F" stroke-width="3" x1="40.0" y1="150.0" x2="26.0" y2="150.0"/>
+        <line class="tick" stroke="#8EA3B8" stroke-width="1.5" x1="32.6" y1="137.7" x2="26.7" y2="137.0"/>
+        <line class="tick" stroke="#8EA3B8" stroke-width="1.5" x1="34.6" y1="125.5" x2="28.7" y2="124.2"/>
+        <line class="tick" stroke="#8EA3B8" stroke-width="1.5" x1="37.8" y1="113.5" x2="32.1" y2="111.7"/>
+        <line class="tick" stroke="#8EA3B8" stroke-width="1.5" x1="42.2" y1="102.0" x2="36.7" y2="99.6"/>
+        <line class="tick major" stroke="#16324F" stroke-width="3" x1="54.7" y1="95.0" x2="42.6" y2="88.0"/>
+        <line class="tick" stroke="#8EA3B8" stroke-width="1.5" x1="54.5" y1="80.6" x2="49.7" y2="77.1"/>
+        <line class="tick" stroke="#8EA3B8" stroke-width="1.5" x1="62.3" y1="71.0" x2="57.9" y2="67.0"/>
+        <line class="tick" stroke="#8EA3B8" stroke-width="1.5" x1="71.0" y1="62.3" x2="67.0" y2="57.9"/>
+        <line class="tick" stroke="#8EA3B8" stroke-width="1.5" x1="80.6" y1="54.5" x2="77.1" y2="49.7"/>
+        <line class="tick major" stroke="#16324F" stroke-width="3" x1="95.0" y1="54.7" x2="88.0" y2="42.6"/>
+        <line class="tick" stroke="#8EA3B8" stroke-width="1.5" x1="102.0" y1="42.2" x2="99.6" y2="36.7"/>
+        <line class="tick" stroke="#8EA3B8" stroke-width="1.5" x1="113.5" y1="37.8" x2="111.7" y2="32.1"/>
+        <line class="tick" stroke="#8EA3B8" stroke-width="1.5" x1="125.5" y1="34.6" x2="124.2" y2="28.7"/>
+        <line class="tick" stroke="#8EA3B8" stroke-width="1.5" x1="137.7" y1="32.6" x2="137.0" y2="26.7"/>
+        <text class="num" x="196.5" y="69.5" dy="0.35em" fill="#16324F" font-family="'Baloo 2', 'Trebuchet MS', sans-serif" font-weight="800" font-size="25" text-anchor="middle">1</text>
+        <text class="num" x="230.5" y="103.5" dy="0.35em" fill="#16324F" font-family="'Baloo 2', 'Trebuchet MS', sans-serif" font-weight="800" font-size="25" text-anchor="middle">2</text>
+        <text class="num" x="243.0" y="150.0" dy="0.35em" fill="#16324F" font-family="'Baloo 2', 'Trebuchet MS', sans-serif" font-weight="800" font-size="25" text-anchor="middle">3</text>
+        <text class="num" x="230.5" y="196.5" dy="0.35em" fill="#16324F" font-family="'Baloo 2', 'Trebuchet MS', sans-serif" font-weight="800" font-size="25" text-anchor="middle">4</text>
+        <text class="num" x="196.5" y="230.5" dy="0.35em" fill="#16324F" font-family="'Baloo 2', 'Trebuchet MS', sans-serif" font-weight="800" font-size="25" text-anchor="middle">5</text>
+        <text class="num" x="150.0" y="243.0" dy="0.35em" fill="#16324F" font-family="'Baloo 2', 'Trebuchet MS', sans-serif" font-weight="800" font-size="25" text-anchor="middle">6</text>
+        <text class="num" x="103.5" y="230.5" dy="0.35em" fill="#16324F" font-family="'Baloo 2', 'Trebuchet MS', sans-serif" font-weight="800" font-size="25" text-anchor="middle">7</text>
+        <text class="num" x="69.5" y="196.5" dy="0.35em" fill="#16324F" font-family="'Baloo 2', 'Trebuchet MS', sans-serif" font-weight="800" font-size="25" text-anchor="middle">8</text>
+        <text class="num" x="57.0" y="150.0" dy="0.35em" fill="#16324F" font-family="'Baloo 2', 'Trebuchet MS', sans-serif" font-weight="800" font-size="25" text-anchor="middle">9</text>
+        <text class="num" x="69.5" y="103.5" dy="0.35em" fill="#16324F" font-family="'Baloo 2', 'Trebuchet MS', sans-serif" font-weight="800" font-size="25" text-anchor="middle">10</text>
+        <text class="num" x="103.5" y="69.5" dy="0.35em" fill="#16324F" font-family="'Baloo 2', 'Trebuchet MS', sans-serif" font-weight="800" font-size="25" text-anchor="middle">11</text>
+        <text class="num" x="150.0" y="57.0" dy="0.35em" fill="#16324F" font-family="'Baloo 2', 'Trebuchet MS', sans-serif" font-weight="800" font-size="25" text-anchor="middle">12</text>
+        <g id="hourHand" transform="rotate(245 150 150)"><line class="handHour" x1="150" y1="164" x2="150" y2="86" stroke="#1D4ED8" stroke-width="11" stroke-linecap="round"/></g>
+        <g id="minuteHand" transform="rotate(60 150 150)"><line class="handMin" x1="150" y1="168" x2="150" y2="36" stroke="#E63946" stroke-width="7" stroke-linecap="round"/></g>
+        <circle class="cap" cx="150" cy="150" r="8" fill="#16324F"/>
+        <circle cx="150" cy="150" r="3" fill="#FFFFFF"/>
+      </svg></div>
+      <div class="nudges" id="nudges">
+        <button type="button" data-nudge="-hour">&#9664; hour</button>
+        <button type="button" data-nudge="-min" id="nudgeMinBack">&#9664; 5 min</button>
+        <button type="button" data-nudge="+min" id="nudgeMinFwd">5 min &#9654;</button>
+        <button type="button" data-nudge="+hour">hour &#9654;</button>
+      </div>
+      <p class="legend"><span><i class="sw h"></i>short = hours</span><span><i class="sw m"></i>long = minutes</span></p>
+    </div>
+
+    <div class="card panel">
+      <div class="mascot">
+        <svg class="bird" id="bird" viewBox="0 -14 64 78" aria-hidden="true">
+          <path d="M14 36 Q3 45 7 54 Q15 48 21 41 Z" fill="#1B1B1F"/>
+          <ellipse cx="30" cy="39" rx="20" ry="16" fill="#1B1B1F"/>
+          <ellipse cx="34" cy="43" rx="14" ry="11" fill="#FFD95A"/>
+          <ellipse cx="35" cy="48" rx="10" ry="6" fill="#FFFFFF"/>
+          <ellipse cx="23" cy="37" rx="7" ry="2.6" fill="#FFFFFF" transform="rotate(-18 23 37)"/>
+          <circle cx="40" cy="23" r="12" fill="#1B1B1F"/>
+          <circle cx="44" cy="21" r="2.8" fill="#FFFFFF"/>
+          <circle cx="44.7" cy="21" r="1.5" fill="#1B1B1F"/>
+          <path d="M51 22 L59 24.5 L51 27 Z" fill="#E8902A"/>
+          <path d="M30 54 L28 60 M36 54 L37 60" stroke="#6B4A2B" stroke-width="2" stroke-linecap="round"/>
+          <g id="fit-party" display="none">
+            <path d="M32 13 L48 13 L41 -9 Z" fill="#E2335F"/>
+            <path d="M35 6 L45 6 M37.5 -1 L43.5 -1" stroke="#FFC93C" stroke-width="2.5"/>
+            <circle cx="41" cy="-10" r="3" fill="#FFC93C"/>
+          </g>
+          <g id="fit-shades" display="none">
+            <rect x="37" y="17" width="13" height="7" rx="3" fill="#111111"/>
+            <path d="M37 20 L29 18" stroke="#111111" stroke-width="2"/>
+            <rect x="39" y="18.5" width="4" height="1.6" rx="0.8" fill="#FFFFFF" opacity="0.7"/>
+          </g>
+          <g id="fit-cap" display="none">
+            <path d="M28.5 16 Q40 0 51.5 16 Z" fill="#2F6FE0"/>
+            <rect x="46" y="13.5" width="14" height="3.4" rx="1.7" fill="#1D4ED8"/>
+            <circle cx="40" cy="5" r="2" fill="#FFC93C"/>
+          </g>
+          <g id="fit-bow" display="none">
+            <path d="M33 31 L40 35 L33 39 Z M47 31 L40 35 L47 39 Z" fill="#E2335F"/>
+            <circle cx="40" cy="35" r="2" fill="#B01E45"/>
+          </g>
+          <g id="fit-wizard" display="none">
+            <path d="M31 12 L49 12 L43 -13 Z" fill="#5B3FC4"/>
+            <ellipse cx="40" cy="12" rx="13" ry="3" fill="#4730A0"/>
+            <path d="M41 1 L42 3.2 L44.4 3.4 L42.6 5 L43.2 7.4 L41 6.1 L38.8 7.4 L39.4 5 L37.6 3.4 L40 3.2 Z" fill="#FFC93C"/>
+          </g>
+          <g id="fit-crown" display="none">
+            <path d="M30 14 L30 2 L35 8 L40 -2 L45 8 L50 2 L50 14 Z" fill="#FFC93C" stroke="#C99A12" stroke-width="1.2"/>
+            <circle cx="40" cy="9" r="2" fill="#E2335F"/>
+            <circle cx="34" cy="10" r="1.4" fill="#2F6FE0"/>
+            <circle cx="46" cy="10" r="1.4" fill="#1E9E45"/>
+          </g>
+        </svg>
+        <div class="bubble" id="bubble">Kia ora! I'm Miro.</div>
+      </div>
+      <div id="panelBody" class="panel"></div>
+    </div>
+  </section>
+
+  <section class="lower">
+    <div class="card shadowcard">
+      <h2>Dress up Miro</h2>
+      <div class="wardrobe" id="wardrobe"></div>
+    </div>
+    <div class="card shadowcard">
+      <h2>Sticker book <span class="count" id="stickerTotal">0 / 12</span></h2>
+      <div class="stickergrid" id="stickerGrid"></div>
+    </div>
+    <div class="card shadowcard wide">
+      <h2>Badges</h2>
+      <div class="badgegrid" id="badgeGrid"></div>
+    </div>
+  </section>
+
+  <details class="card shadowcard grownups">
+    <summary>Tips for grown-ups</summary>
+    <ul>
+      <li>Start with 2 minutes of Play clock. Ask "where's the short hand now?"</li>
+      <li>10 minutes a day beats 40 minutes once a week.</li>
+      <li>Once Medium feels easy, switch Helper off. That's the real test.</li>
+      <li>Wrong answers name the exact mistake. Read it out together.</li>
+      <li>Stars, badges, outfits, stickers and Miro's day save on this device.</li>
+      <li>Harder levels and streaks give more stars. Every 30 stars opens a treasure chest.</li>
+      <li>In Play clock, try 7:00, 3:00 or 8:00. Miro has a surprise.</li>
+    </ul>
+  </details>
+</div>
+
+<div class="toast" id="toast" hidden></div>
+<div class="overlay" id="overlay" hidden>
+  <div class="ovcard" role="dialog" aria-modal="true" aria-labelledby="ovTitle">
+    <div class="ovbig" id="ovBig"></div>
+    <p class="ovtitle" id="ovTitle"></p>
+    <p class="ovtext" id="ovText"></p>
+    <button class="primary" type="button" id="ovBtn">Yay!</button>
+  </div>
+</div>
+<canvas id="confetti" aria-hidden="true"></canvas>
+
+<script>
+// If anything goes wrong, show the problem on the page instead of failing quietly.
+function showError(message) {
+  var box = document.getElementById("errBox");
+  if (!box) return;
+  box.hidden = false;
+  box.textContent = "Something broke. Please send Claude a screenshot of this: " + message;
+}
+window.addEventListener("error", function (evt) {
+  showError(evt.message + " (line " + evt.lineno + ")");
+});
+</script>
+<script>
+(function () {
+  // ---------- saved progress ----------
+  var STORE_KEY = "clock-quest-v2";
+  var state = {
+    stars: 0,
+    streak: 0,
+    bestStreak: 0,
+    bestSpeed: 0,
+    level: "easy",
+    helper: true,
+    sound: true,
+    outfit: "none",
+    storyStep: 0,
+    storyMistakes: 0,
+    storyDone: false,
+    storyPerfect: false,
+    chestsOpened: 0,
+    stickers: {},
+    badges: {},
+    counts: { correct: 0, quarter: 0, toRight: 0, setRight: 0, hardRight: 0 }
+  };
+
+  function loadState() {
+    try {
+      var raw = localStorage.getItem(STORE_KEY);
+      if (!raw) return;
+      var saved = JSON.parse(raw);
+      var key;
+      for (key in saved) {
+        if (key === "counts" || key === "badges" || key === "stickers") continue;
+        state[key] = saved[key];
+      }
+      if (saved.badges) state.badges = saved.badges;
+      if (saved.stickers) state.stickers = saved.stickers;
+      if (saved.counts) {
+        for (key in saved.counts) state.counts[key] = saved.counts[key];
+      }
+    } catch (e) {}
+  }
+
+  function saveState() {
+    try {
+      localStorage.setItem(STORE_KEY, JSON.stringify(state));
+    } catch (e) {}
+  }
+
+  // ---------- building page parts ----------
+  // Everything is built piece by piece (never from HTML text), so no viewer can block it.
+  function make(tag, className, text) {
+    var el = document.createElement(tag);
+    if (className) el.className = className;
+    if (text !== undefined && text !== null) el.textContent = text;
+    return el;
+  }
+
+  function makeButton(className, id, text) {
+    var btn = make("button", className, text);
+    btn.type = "button";
+    if (id) btn.id = id;
+    return btn;
+  }
+
+  function clearBox(box) {
+    while (box.firstChild) {
+      box.removeChild(box.firstChild);
+    }
+  }
+
+  function makeFeedback() {
+    var fb = make("p", "feedback");
+    fb.id = "fb";
+    fb.hidden = true;
+    return fb;
+  }
+
+  // The Check / Show me / Next buttons used by Set it! and Miro's day.
+  function makeCheckRow() {
+    var row = make("div", "row");
+    row.appendChild(makeButton("primary", "checkBtn", "Check \u2713"));
+    var showBtn = makeButton("ghost", "showBtn", "Show me");
+    showBtn.hidden = true;
+    row.appendChild(showBtn);
+    var nextBtn = makeButton("primary", "nextBtn", "Next \u25B6");
+    nextBtn.hidden = true;
+    row.appendChild(nextBtn);
+    return row;
+  }
+
+  // ---------- small helpers ----------
+  function randInt(a, b) {
+    return a + Math.floor(Math.random() * (b - a + 1));
+  }
+
+  function shuffle(list) {
+    for (var i = list.length - 1; i > 0; i--) {
+      var j = randInt(0, i);
+      var temp = list[i];
+      list[i] = list[j];
+      list[j] = temp;
+    }
+    return list;
+  }
+
+  function pick(list) {
+    return list[randInt(0, list.length - 1)];
+  }
+
+  // Clock time is stored as minutes after 12:00, from 0 to 719.
+  function wrapTime(t) {
+    return ((t % 720) + 720) % 720;
+  }
+
+  function hourName(h) {
+    h = ((h % 12) + 12) % 12;
+    if (h === 0) return 12;
+    return h;
+  }
+
+  function minuteWord(count) {
+    if (count % 5 === 0) return "";
+    if (count === 1) return " minute";
+    return " minutes";
+  }
+
+  function timeWords(t) {
+    var h = Math.floor(t / 60);
+    var m = t % 60;
+    if (m === 0) return hourName(h) + " o'clock";
+    if (m === 15) return "quarter past " + hourName(h);
+    if (m === 30) return "half past " + hourName(h);
+    if (m === 45) return "quarter to " + hourName(h + 1);
+    if (m < 30) return m + minuteWord(m) + " past " + hourName(h);
+    var left = 60 - m;
+    return left + minuteWord(left) + " to " + hourName(h + 1);
+  }
+
+  function timeDigital(t) {
+    var h = hourName(Math.floor(t / 60));
+    var m = t % 60;
+    var mm = String(m);
+    if (m < 10) mm = "0" + m;
+    return h + ":" + mm;
+  }
+
+  function formatTime(t, kind) {
+    if (kind === "words") return timeWords(t);
+    return timeDigital(t);
+  }
+
+  function randomTime(level) {
+    var h = randInt(0, 11);
+    var m;
+    if (level === "easy") {
+      m = pick([0, 15, 30, 45]);
+    } else if (level === "medium") {
+      m = randInt(0, 11) * 5;
+    } else {
+      if (Math.random() < 0.65) {
+        m = randInt(0, 11) * 5;
+      } else {
+        m = randInt(0, 59);
+      }
+    }
+    return h * 60 + m;
+  }
+
+  var lastTime = -1;
+  function freshTime() {
+    var t = randomTime(state.level);
+    var guard = 0;
+    while (t === lastTime && guard < 20) {
+      t = randomTime(state.level);
+      guard++;
+    }
+    lastTime = t;
+    return t;
+  }
+
+  // Short hint describing how to read a time.
+  function explainTime(t) {
+    var h = Math.floor(t / 60);
+    var m = t % 60;
+    var hourPart;
+    if (m === 0) {
+      hourPart = "Short hand on " + hourName(h) + ".";
+    } else if (m <= 30) {
+      hourPart = "Short hand just past " + hourName(h) + ".";
+    } else {
+      hourPart = "Short hand nearly on " + hourName(h + 1) + ", so it's still " + hourName(h) + ".";
+    }
+    var minutePart;
+    if (m === 0) {
+      minutePart = " Long hand on 12 = o'clock.";
+    } else if (m % 5 === 0) {
+      minutePart = " Long hand on " + (m / 5) + ": count by 5s.";
+    } else {
+      minutePart = " Count the little marks from 12.";
+    }
+    return hourPart + minutePart;
+  }
+
+  // Build answer choices. Wrong choices are the mistakes kids really make,
+  // and each one carries a short message about that mistake.
+  function buildOptions(t, kind, howMany) {
+    var h = Math.floor(t / 60);
+    var m = t % 60;
+    var options = [];
+    var seen = {};
+
+    function add(time, why, isRight) {
+      time = wrapTime(time);
+      if (!isRight && time === t) return;
+      var text = formatTime(time, kind);
+      if (seen[text]) return;
+      seen[text] = true;
+      options.push({ text: text, time: time, right: isRight, why: why });
+    }
+
+    add(t, "", true);
+
+    var tricks = [];
+
+    // Mixing up "past" and "to"
+    if (m !== 0 && m !== 30) {
+      if (m < 30) {
+        tricks.push({ time: h * 60 - m, why: "Long hand on the right side = past." });
+      } else {
+        tricks.push({ time: h * 60 + (60 - m), why: "Long hand on the left side = to." });
+      }
+    }
+
+    // Wrong hour
+    if (m > 30) {
+      if (kind === "words") {
+        tricks.push({ time: (h - 1) * 60 + m, why: "\"To\" times use the next hour: " + hourName(h + 1) + "." });
+      } else {
+        tricks.push({ time: (h + 1) * 60 + m, why: "Short hand hasn't reached " + hourName(h + 1) + " yet. Still " + hourName(h) + "." });
+      }
+    } else if (m === 0) {
+      tricks.push({ time: (h + 1) * 60, why: "Short hand points at " + hourName(h) + "." });
+    } else {
+      tricks.push({ time: (h + 1) * 60 + m, why: "Short hand just left " + hourName(h) + ". Still " + hourName(h) + "." });
+    }
+
+    // Reading the number as minutes (forgetting to count by 5s)
+    if (m % 5 === 0 && m !== 0) {
+      var n = m / 5;
+      if (m <= 30) {
+        tricks.push({ time: h * 60 + n, why: "Each number = 5 minutes. Count by 5s!" });
+      } else {
+        tricks.push({ time: (h + 1) * 60 - (12 - n), why: "Each number = 5 minutes. Count by 5s up to 12." });
+      }
+    }
+
+    // Swapping the hands
+    if (m % 5 === 0) {
+      var swapHour = m / 5;
+      var swapMinutes = (hourName(h) * 5) % 60;
+      tricks.push({ time: swapHour * 60 + swapMinutes, why: "Short = hours, long = minutes. Don't swap!" });
+    }
+
+    shuffle(tricks);
+    for (var i = 0; i < tricks.length; i++) {
+      if (options.length >= howMany) break;
+      add(tricks[i].time, tricks[i].why, false);
+    }
+
+    var guard = 0;
+    while (options.length < howMany && guard < 60) {
+      add(randomTime(state.level), "", false);
+      guard++;
+    }
+
+    return shuffle(options);
+  }
+
+  // ---------- the clock ----------
+  var app = document.getElementById("app");
+  var clockSvg = document.getElementById("clock");
+  var clockCard = document.getElementById("clockCard");
+  var nudges = document.getElementById("nudges");
+  var minuteHand, hourHand, helperGroup;
+
+  var T = 8 * 60 + 10;
+  var snap = 1;
+  var nudgeStep = 5;
+  var clockLive = false;
+  var dragging = null;
+
+  // The clock is already drawn in the page, so this just finds its parts.
+  function buildClock() {
+    minuteHand = document.getElementById("minuteHand");
+    hourHand = document.getElementById("hourHand");
+    helperGroup = document.getElementById("helper");
+  }
+
+  function minuteAngle() {
+    return (T % 60) * 6;
+  }
+
+  function hourAngle() {
+    return ((T / 60) % 12) * 30;
+  }
+
+  function renderClock() {
+    minuteHand.setAttribute("transform", "rotate(" + minuteAngle() + " 150 150)");
+    hourHand.setAttribute("transform", "rotate(" + hourAngle() + " 150 150)");
+    if (mode === "play" || mode === "set") {
+      clockSvg.setAttribute("aria-label", "Clock showing " + timeWords(T));
+    } else {
+      clockSvg.setAttribute("aria-label", "Clock. What time does it show?");
+    }
+  }
+
+  function wiggleClock() {
+    clockSvg.classList.remove("wiggle");
+    void clockSvg.getBoundingClientRect();
+    clockSvg.classList.add("wiggle");
+  }
+
+  function renderHelper() {
+    if (state.helper) {
+      helperGroup.removeAttribute("display");
+    } else {
+      helperGroup.setAttribute("display", "none");
+    }
+    document.getElementById("helperToggle").checked = state.helper;
+  }
+
+  function setClockLive(live) {
+    clockLive = live;
+    if (live) {
+      clockCard.classList.add("live");
+      nudges.hidden = false;
+    } else {
+      clockCard.classList.remove("live");
+      nudges.hidden = true;
+    }
+  }
+
+  function updateNudgeLabels() {
+    document.getElementById("nudgeMinBack").textContent = "\u25C0 " + nudgeStep + " min";
+    document.getElementById("nudgeMinFwd").textContent = nudgeStep + " min \u25B6";
+  }
+
+  function pointerInfo(evt) {
+    var rect = clockSvg.getBoundingClientRect();
+    var cx = rect.left + rect.width / 2;
+    var cy = rect.top + rect.height / 2;
+    var dx = evt.clientX - cx;
+    var dy = evt.clientY - cy;
+    var angle = Math.atan2(dx, -dy) * 180 / Math.PI;
+    if (angle < 0) angle += 360;
+    var dist = Math.sqrt(dx * dx + dy * dy) / (rect.width / 2);
+    return { angle: angle, dist: dist };
+  }
+
+  function angleGap(a, b) {
+    var d = Math.abs(a - b) % 360;
+    if (d > 180) d = 360 - d;
+    return d;
+  }
+
+  // Moving the long hand: crossing the 12 changes the hour, like a real clock.
+  function moveMinuteHand(angle) {
+    var newM = Math.round(angle / 6 / snap) * snap;
+    newM = newM % 60;
+    var oldM = T % 60;
+    var delta = newM - oldM;
+    if (delta > 30) delta = delta - 60;
+    if (delta < -30) delta = delta + 60;
+    T = wrapTime(T + delta);
+  }
+
+  // Moving the short hand: changes the hour, keeps the minutes.
+  function moveHourHand(angle) {
+    var m = T % 60;
+    var h = Math.round(angle / 30 - m / 60);
+    h = ((h % 12) + 12) % 12;
+    T = h * 60 + m;
+  }
+
+  function moveDragged(evt) {
+    var p = pointerInfo(evt);
+    var before = T;
+    if (dragging === "minute") {
+      moveMinuteHand(p.angle);
+    } else {
+      moveHourHand(p.angle);
+    }
+    if (T !== before) {
+      soundTick();
+      renderClock();
+      onClockChanged();
+    }
+  }
+
+  // Works out which hand the finger grabbed: the one nearest to where it touched.
+  function pickHand(point) {
+    var p = pointerInfo(point);
+    var gapMin = angleGap(p.angle, minuteAngle());
+    var gapHour = angleGap(p.angle, hourAngle());
+    if (gapHour < 25 && gapMin < 25) {
+      if (p.dist < 0.62) {
+        dragging = "hour";
+      } else {
+        dragging = "minute";
+      }
+    } else if (gapHour < gapMin) {
+      dragging = "hour";
+    } else {
+      dragging = "minute";
+    }
+  }
+
+  clockSvg.addEventListener("pointerdown", function (evt) {
+    if (!clockLive) return;
+    evt.preventDefault();
+    pickHand(evt);
+    try {
+      clockSvg.setPointerCapture(evt.pointerId);
+    } catch (e) {}
+    moveDragged(evt);
+  });
+
+  clockSvg.addEventListener("pointermove", function (evt) {
+    if (!dragging) return;
+    moveDragged(evt);
+  });
+
+  function stopDrag() {
+    dragging = null;
+  }
+  clockSvg.addEventListener("pointerup", stopDrag);
+  clockSvg.addEventListener("pointercancel", stopDrag);
+
+  // Older iPads and iPhones (before iOS 13) have no pointer events, so use touch and mouse there.
+  if (!window.PointerEvent) {
+    clockSvg.addEventListener("touchstart", function (evt) {
+      if (!clockLive || evt.touches.length === 0) return;
+      evt.preventDefault();
+      pickHand(evt.touches[0]);
+      moveDragged(evt.touches[0]);
+    }, { passive: false });
+    clockSvg.addEventListener("touchmove", function (evt) {
+      if (!dragging || evt.touches.length === 0) return;
+      evt.preventDefault();
+      moveDragged(evt.touches[0]);
+    }, { passive: false });
+    clockSvg.addEventListener("touchend", stopDrag);
+    clockSvg.addEventListener("touchcancel", stopDrag);
+    clockSvg.addEventListener("mousedown", function (evt) {
+      if (!clockLive) return;
+      evt.preventDefault();
+      pickHand(evt);
+      moveDragged(evt);
+    });
+    document.addEventListener("mousemove", function (evt) {
+      if (!dragging) return;
+      moveDragged(evt);
+    });
+    document.addEventListener("mouseup", stopDrag);
+  }
+
+  nudges.addEventListener("click", function (evt) {
+    var btn = evt.target.closest("button");
+    if (!btn || !clockLive) return;
+    var what = btn.getAttribute("data-nudge");
+    if (what === "-hour") T = wrapTime(T - 60);
+    if (what === "+hour") T = wrapTime(T + 60);
+    if (what === "-min") T = wrapTime(T - nudgeStep);
+    if (what === "+min") T = wrapTime(T + nudgeStep);
+    soundTick();
+    renderClock();
+    onClockChanged();
+  });
+
+  // Fun surprises: Miro reacts when the Play clock lands on these times.
+  var SPECIAL_TIMES = {};
+  SPECIAL_TIMES[7 * 60] = "Wakey wakey! \u23F0";
+  SPECIAL_TIMES[7 * 60 + 30] = "Breakfast time! \uD83E\uDD63";
+  SPECIAL_TIMES[10 * 60 + 30] = "Morning tea! \uD83C\uDF4E";
+  SPECIAL_TIMES[0] = "Lunchtime! \uD83E\uDD6A";
+  SPECIAL_TIMES[3 * 60] = "Home time! \uD83C\uDFE0";
+  SPECIAL_TIMES[6 * 60] = "Dinner time! \uD83C\uDF5D";
+  SPECIAL_TIMES[8 * 60] = "Bedtime! \uD83D\uDE34";
+  var lastSpecial = "";
+
+  function onClockChanged() {
+    if (mode === "play") {
+      var d = document.getElementById("liveDigital");
+      var w = document.getElementById("liveWords");
+      if (d) d.textContent = timeDigital(T);
+      if (w) w.textContent = timeWords(T);
+
+      var special = SPECIAL_TIMES[T];
+      if (special) {
+        if (special !== lastSpecial) {
+          lastSpecial = special;
+          say(special);
+          hop();
+          playNotes([784, 988, 1175], 0.09, "triangle");
+        }
+      } else if (lastSpecial !== "") {
+        lastSpecial = "";
+        say("Drag my clock hands!");
+      }
+    }
+  }
+
+  // ---------- Miro, sounds, toasts, confetti ----------
+  var bubble = document.getElementById("bubble");
+  var bird = document.getElementById("bird");
+  var PRAISE = ["Ka pai!", "Sweet as!", "Tu meke!", "Choice!", "Nailed it!", "Mean!", "Too easy!"];
+  var OOPS = ["Close! Look again.", "Hmm, not quite.", "Oops! Try again."];
+
+  function say(text) {
+    bubble.textContent = text;
+  }
+
+  function hop() {
+    bird.classList.remove("hop");
+    void bird.getBoundingClientRect();
+    bird.classList.add("hop");
+  }
+
+  var audioCtx = null;
+  function playNotes(freqs, length, type, volume) {
+    if (!state.sound) return;
+    if (!volume) volume = 0.18;
+    try {
+      if (!audioCtx) {
+        var Ctx = window.AudioContext || window.webkitAudioContext;
+        if (!Ctx) return;
+        audioCtx = new Ctx();
+      }
+      if (audioCtx.state === "suspended" && audioCtx.resume) {
+        audioCtx.resume();
+      }
+      var now = audioCtx.currentTime;
+      for (var i = 0; i < freqs.length; i++) {
+        var osc = audioCtx.createOscillator();
+        var gain = audioCtx.createGain();
+        osc.type = type || "sine";
+        osc.frequency.value = freqs[i];
+        var start = now + i * length;
+        gain.gain.setValueAtTime(0.0001, start);
+        gain.gain.exponentialRampToValueAtTime(volume, start + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.0001, start + length);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(start);
+        osc.stop(start + length + 0.05);
+      }
+    } catch (e) {}
+  }
+
+  function soundRight() {
+    playNotes([660, 880], 0.12, "triangle");
+  }
+
+  function soundWrong() {
+    playNotes([220, 180], 0.14, "square");
+  }
+
+  function soundUnlock() {
+    playNotes([523, 659, 784, 1047], 0.11, "triangle");
+  }
+
+  // A tiny "tick" each time a clock hand moves.
+  var lastTickAt = 0;
+  function soundTick() {
+    var now = Date.now();
+    if (now - lastTickAt < 35) return;
+    lastTickAt = now;
+    playNotes([2200], 0.025, "square", 0.04);
+  }
+
+  function soundBeep(high) {
+    if (high) {
+      playNotes([988], 0.25, "triangle");
+    } else {
+      playNotes([523], 0.12, "triangle");
+    }
+  }
+
+  var toastEl = document.getElementById("toast");
+  var toastQueue = [];
+  var toastBusy = false;
+  function showToast(text) {
+    toastQueue.push(text);
+    if (!toastBusy) nextToast();
+  }
+
+  function nextToast() {
+    if (toastQueue.length === 0) {
+      toastBusy = false;
+      toastEl.hidden = true;
+      return;
+    }
+    toastBusy = true;
+    toastEl.textContent = toastQueue.shift();
+    toastEl.hidden = false;
+    setTimeout(nextToast, 2200);
+  }
+
+  var confettiCanvas = document.getElementById("confetti");
+  var reduceMotion = false;
+  try {
+    reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  } catch (e) {}
+
+  function confetti() {
+    if (reduceMotion) return;
+    var ctx = confettiCanvas.getContext("2d");
+    var w = window.innerWidth;
+    var h = window.innerHeight;
+    confettiCanvas.width = w;
+    confettiCanvas.height = h;
+    var colours = ["#EE7A12", "#FFC93C", "#E2335F", "#2F6FE0", "#1E9E45"];
+    var bits = [];
+    for (var i = 0; i < 90; i++) {
+      bits.push({
+        x: w / 2,
+        y: h * 0.35,
+        vx: (Math.random() - 0.5) * 14,
+        vy: -Math.random() * 12 - 4,
+        size: 6 + Math.random() * 6,
+        colour: colours[i % colours.length],
+        spin: Math.random() * 6
+      });
+    }
+    var frames = 0;
+    function step() {
+      ctx.clearRect(0, 0, w, h);
+      for (var j = 0; j < bits.length; j++) {
+        var b = bits[j];
+        b.vy += 0.4;
+        b.x += b.vx;
+        b.y += b.vy;
+        b.spin += 0.2;
+        ctx.save();
+        ctx.translate(b.x, b.y);
+        ctx.rotate(b.spin);
+        ctx.fillStyle = b.colour;
+        ctx.fillRect(-b.size / 2, -b.size / 4, b.size, b.size / 2);
+        ctx.restore();
+      }
+      frames++;
+      if (frames < 90) {
+        requestAnimationFrame(step);
+      } else {
+        ctx.clearRect(0, 0, w, h);
+      }
+    }
+    requestAnimationFrame(step);
+  }
+
+  // A "+1 \u2605" that floats up from where the kid tapped.
+  function flyText(text, fromEl) {
+    if (reduceMotion || !fromEl) return;
+    var rect = fromEl.getBoundingClientRect();
+    var span = document.createElement("span");
+    span.className = "flyer";
+    span.textContent = text;
+    span.style.left = (rect.left + rect.width / 2) + "px";
+    span.style.top = (rect.top) + "px";
+    document.body.appendChild(span);
+    setTimeout(function () {
+      span.remove();
+    }, 950);
+  }
+
+  function flyStars(label, fromEl) {
+    if (reduceMotion || !fromEl) return;
+    flyText(label, fromEl);
+    var chip = document.getElementById("starChip");
+    chip.classList.remove("bump");
+    void chip.getBoundingClientRect();
+    chip.classList.add("bump");
+  }
+
+  // ---------- Miro's outfits (unlocked with stars) ----------
+  var OUTFITS = [
+    { id: "none", icon: "\uD83D\uDC26", name: "Plain", stars: 0 },
+    { id: "party", icon: "\uD83E\uDD73", name: "Party hat", stars: 15 },
+    { id: "shades", icon: "\uD83D\uDE0E", name: "Shades", stars: 40 },
+    { id: "cap", icon: "\uD83E\uDDE2", name: "Cap", stars: 90 },
+    { id: "bow", icon: "\uD83C\uDF80", name: "Bow tie", stars: 140 },
+    { id: "crown", icon: "\uD83D\uDC51", name: "Crown", stars: 220 },
+    { id: "wizard", icon: "\uD83E\uDDD9", name: "Wizard", stars: 350 }
+  ];
+
+  function renderOutfit() {
+    for (var i = 1; i < OUTFITS.length; i++) {
+      var g = document.getElementById("fit-" + OUTFITS[i].id);
+      if (OUTFITS[i].id === state.outfit) {
+        g.removeAttribute("display");
+      } else {
+        g.setAttribute("display", "none");
+      }
+    }
+  }
+
+  function renderWardrobe() {
+    var box = document.getElementById("wardrobe");
+    clearBox(box);
+    for (var i = 0; i < OUTFITS.length; i++) {
+      var o = OUTFITS[i];
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "wear";
+      var unlocked = state.stars >= o.stars;
+      if (unlocked) {
+        btn.appendChild(make("span", "wi", o.icon));
+        btn.appendChild(document.createTextNode(o.name));
+        btn.setAttribute("aria-pressed", state.outfit === o.id ? "true" : "false");
+        btn.setAttribute("data-fit", o.id);
+        btn.addEventListener("click", function () {
+          state.outfit = this.getAttribute("data-fit");
+          saveState();
+          renderOutfit();
+          renderWardrobe();
+          hop();
+          say("How do I look?");
+        });
+      } else {
+        btn.appendChild(make("span", "wi", "\uD83D\uDD12"));
+        btn.appendChild(document.createTextNode(o.stars + " \u2605"));
+        btn.disabled = true;
+        btn.setAttribute("aria-label", o.name + ", needs " + o.stars + " stars");
+      }
+      box.appendChild(btn);
+    }
+  }
+
+  function checkUnlocks(oldStars) {
+    for (var i = 1; i < OUTFITS.length; i++) {
+      var o = OUTFITS[i];
+      if (oldStars < o.stars && state.stars >= o.stars) {
+        showToast("New outfit for Miro: " + o.name + "!");
+        soundUnlock();
+        confetti();
+      }
+    }
+    renderWardrobe();
+  }
+
+  // ---------- ranks (go up as total stars grow) ----------
+  var RANKS = [
+    { stars: 0, icon: "\uD83D\uDC23", name: "Tick Tock Chick" },
+    { stars: 30, icon: "\uD83D\uDC22", name: "Minute Mover" },
+    { stars: 80, icon: "\uD83E\uDDED", name: "Quarter Captain" },
+    { stars: 160, icon: "\uD83E\uDDB8", name: "Hour Hero" },
+    { stars: 300, icon: "\uD83D\uDE80", name: "Time Rocket" },
+    { stars: 500, icon: "\uD83E\uDDD9", name: "Time Wizard" },
+    { stars: 800, icon: "\uD83C\uDFC6", name: "Clock Legend" }
+  ];
+
+  function rankIndex(stars) {
+    var index = 0;
+    for (var i = 0; i < RANKS.length; i++) {
+      if (stars >= RANKS[i].stars) index = i;
+    }
+    return index;
+  }
+
+  function renderRank() {
+    var index = rankIndex(state.stars);
+    var rank = RANKS[index];
+    document.getElementById("rankIcon").textContent = rank.icon;
+    document.getElementById("rankName").textContent = rank.name;
+    var fill = document.getElementById("rankFill");
+    var next = document.getElementById("rankNext");
+    if (index >= RANKS.length - 1) {
+      fill.style.width = "100%";
+      next.textContent = "Top rank!";
+      return;
+    }
+    var nextRank = RANKS[index + 1];
+    var done = state.stars - rank.stars;
+    var need = nextRank.stars - rank.stars;
+    var percent = Math.round(done / need * 100);
+    fill.style.width = percent + "%";
+    next.textContent = (nextRank.stars - state.stars) + " \u2605 to " + nextRank.icon + " " + nextRank.name;
+  }
+
+  function checkRank(oldStars) {
+    var before = rankIndex(oldStars);
+    var after = rankIndex(state.stars);
+    renderRank();
+    if (after > before) {
+      var rank = RANKS[after];
+      queueOverlay({ big: rank.icon, title: "Level up!", text: "New rank: " + rank.name, button: "Yay!", fanfare: true });
+    }
+  }
+
+  // ---------- treasure chests and the sticker book ----------
+  var CHEST_EVERY = 30;
+  var STICKERS = [
+    { id: "kea", icon: "\uD83E\uDD9C", name: "Kea" },
+    { id: "ruru", icon: "\uD83E\uDD89", name: "Ruru" },
+    { id: "penguin", icon: "\uD83D\uDC27", name: "Little penguin" },
+    { id: "dolphin", icon: "\uD83D\uDC2C", name: "Hector's dolphin" },
+    { id: "weta", icon: "\uD83E\uDD97", name: "W\u0113t\u0101" },
+    { id: "tuatara", icon: "\uD83E\uDD8E", name: "Tuatara" },
+    { id: "seal", icon: "\uD83E\uDDAD", name: "Fur seal" },
+    { id: "whale", icon: "\uD83D\uDC0B", name: "Humpback whale" },
+    { id: "fantail", icon: "\uD83D\uDC26", name: "P\u012Bwakawaka" },
+    { id: "bee", icon: "\uD83D\uDC1D", name: "Bumblebee" },
+    { id: "crab", icon: "\uD83E\uDD80", name: "Paddle crab" },
+    { id: "sheep", icon: "\uD83D\uDC11", name: "Sheep" }
+  ];
+
+  function chestsWaiting() {
+    return Math.floor(state.stars / CHEST_EVERY) - state.chestsOpened;
+  }
+
+  function renderChestChip() {
+    var waiting = chestsWaiting();
+    var chip = document.getElementById("chestBtn");
+    if (waiting > 0) {
+      chip.hidden = false;
+      document.getElementById("chestCount").textContent = waiting;
+    } else {
+      chip.hidden = true;
+    }
+  }
+
+  function checkChests(oldStars) {
+    if (Math.floor(state.stars / CHEST_EVERY) > Math.floor(oldStars / CHEST_EVERY)) {
+      showToast("\uD83C\uDF81 Treasure chest! Tap it at the top to open.");
+      playNotes([659, 784, 659, 1047], 0.09, "triangle");
+    }
+    renderChestChip();
+  }
+
+  function stickersLeft() {
+    var left = [];
+    for (var i = 0; i < STICKERS.length; i++) {
+      if (!state.stickers[STICKERS[i].id]) left.push(STICKERS[i]);
+    }
+    return left;
+  }
+
+  function stickerCount() {
+    return STICKERS.length - stickersLeft().length;
+  }
+
+  function renderStickers() {
+    var box = document.getElementById("stickerGrid");
+    clearBox(box);
+    for (var i = 0; i < STICKERS.length; i++) {
+      var s = STICKERS[i];
+      var card;
+      if (state.stickers[s.id]) {
+        card = make("div", "sticker got");
+        card.appendChild(make("span", "si", s.icon));
+        card.appendChild(make("span", "sn", s.name));
+      } else {
+        card = make("div", "sticker");
+        card.appendChild(make("span", "si", "?"));
+        card.appendChild(make("span", "sn", "???"));
+      }
+      box.appendChild(card);
+    }
+    document.getElementById("stickerTotal").textContent = stickerCount() + " / " + STICKERS.length;
+  }
+
+  function openChest() {
+    if (chestsWaiting() <= 0) return;
+    if (overlayOpen) return;
+    state.chestsOpened += 1;
+    saveState();
+    renderChestChip();
+    showOverlayNow({ big: "\uD83C\uDF81", title: "Opening...", text: "", button: "", shake: true });
+    playNotes([392, 440, 494, 523], 0.15, "triangle", 0.1);
+
+    setTimeout(function () {
+      var left = stickersLeft();
+      if (left.length > 0) {
+        var sticker = pick(left);
+        state.stickers[sticker.id] = true;
+        saveState();
+        renderStickers();
+        fillOverlay({ big: sticker.icon, title: "You found a " + sticker.name + "!", text: "It's in your sticker book.", button: "Cool!" });
+      } else {
+        var oldStars = state.stars;
+        state.stars += 10;
+        saveState();
+        renderHeader();
+        fillOverlay({ big: "\u2B50", title: "Bonus stars!", text: "+10 \u2605 Your sticker book is full!", button: "Cool!" });
+        afterStarsChanged(oldStars);
+      }
+      soundUnlock();
+      confetti();
+      checkBadges();
+    }, 1100);
+  }
+
+  // ---------- pop-up card (level ups and chests) ----------
+  var overlayEl = document.getElementById("overlay");
+  var overlayQueue = [];
+  var overlayOpen = false;
+
+  function queueOverlay(info) {
+    overlayQueue.push(info);
+    showNextOverlay();
+  }
+
+  // Wait until a race is over, so a pop-up never steals race time.
+  function showNextOverlay() {
+    if (overlayOpen) return;
+    if (speed && speed.running) return;
+    if (overlayQueue.length === 0) return;
+    showOverlayNow(overlayQueue.shift());
+  }
+
+  function showOverlayNow(info) {
+    overlayOpen = true;
+    overlayEl.hidden = false;
+    fillOverlay(info);
+  }
+
+  function fillOverlay(info) {
+    var big = document.getElementById("ovBig");
+    big.textContent = info.big;
+    big.classList.remove("shake");
+    if (info.shake && !reduceMotion) {
+      void big.getBoundingClientRect();
+      big.classList.add("shake");
+    }
+    document.getElementById("ovTitle").textContent = info.title;
+    var text = document.getElementById("ovText");
+    text.textContent = info.text;
+    text.hidden = !info.text;
+    var btn = document.getElementById("ovBtn");
+    if (info.button) {
+      btn.hidden = false;
+      btn.textContent = info.button;
+      btn.focus();
+    } else {
+      btn.hidden = true;
+    }
+    if (info.fanfare) {
+      playNotes([523, 659, 784, 1047, 784, 1047], 0.1, "triangle");
+      confetti();
+    }
+  }
+
+  document.getElementById("ovBtn").addEventListener("click", function () {
+    overlayEl.hidden = true;
+    overlayOpen = false;
+    showNextOverlay();
+  });
+
+  document.getElementById("chestBtn").addEventListener("click", openChest);
+
+  // ---------- stars, streaks, badges ----------
+  var BADGES = [
+    { id: "first", icon: "\u23F1", name: "First tick", how: "First right answer" },
+    { id: "roll", icon: "\uD83D\uDD25", name: "On a roll", how: "5 in a row" },
+    { id: "unstoppable", icon: "\uD83D\uDE80", name: "Unstoppable", how: "10 in a row" },
+    { id: "quarter", icon: "\uD83C\uDF55", name: "Quarter master", how: "5 quarter or half times" },
+    { id: "to", icon: "\u2B05", name: "To-time pro", how: "10 \"to\" times" },
+    { id: "setter", icon: "\u270B", name: "Hand mover", how: "Set 10 clocks" },
+    { id: "speedy", icon: "\u26A1", name: "Speedy", how: "15 in Beat the clock" },
+    { id: "boss", icon: "\uD83D\uDC51", name: "Clock boss", how: "10 right on Hard" },
+    { id: "day", icon: "\uD83C\uDF1E", name: "Day planner", how: "Finish Miro's day" },
+    { id: "perfect", icon: "\uD83C\uDF08", name: "Perfect day", how: "Miro's day, no mistakes" },
+    { id: "hero", icon: "\uD83E\uDDB8", name: "Hero", how: "Reach Hour Hero rank" },
+    { id: "collector", icon: "\uD83D\uDCD2", name: "Collector", how: "Fill the sticker book" }
+  ];
+
+  function badgeEarned(id) {
+    var c = state.counts;
+    if (id === "first") return c.correct >= 1;
+    if (id === "roll") return state.bestStreak >= 5;
+    if (id === "unstoppable") return state.bestStreak >= 10;
+    if (id === "quarter") return c.quarter >= 5;
+    if (id === "to") return c.toRight >= 10;
+    if (id === "setter") return c.setRight >= 10;
+    if (id === "speedy") return state.bestSpeed >= 15;
+    if (id === "boss") return c.hardRight >= 10;
+    if (id === "day") return state.storyDone;
+    if (id === "perfect") return state.storyPerfect;
+    if (id === "hero") return rankIndex(state.stars) >= 3;
+    if (id === "collector") return stickerCount() >= STICKERS.length;
+    return false;
+  }
+
+  function checkBadges() {
+    var newOnes = [];
+    for (var i = 0; i < BADGES.length; i++) {
+      var b = BADGES[i];
+      if (!state.badges[b.id] && badgeEarned(b.id)) {
+        state.badges[b.id] = true;
+        newOnes.push(b.name);
+      }
+    }
+    if (newOnes.length > 0) {
+      saveState();
+      renderBadges();
+      showToast("New badge: " + newOnes.join(", ") + "!");
+      confetti();
+    }
+  }
+
+  function renderBadges() {
+    var grid = document.getElementById("badgeGrid");
+    clearBox(grid);
+    for (var i = 0; i < BADGES.length; i++) {
+      var b = BADGES[i];
+      var cls = "badge";
+      if (state.badges[b.id]) cls = "badge got";
+      var card = make("div", cls);
+      card.appendChild(make("div", "bi", b.icon));
+      var words = make("div", "bt");
+      words.appendChild(make("b", "", b.name));
+      words.appendChild(make("span", "", b.how));
+      card.appendChild(words);
+      grid.appendChild(card);
+    }
+  }
+
+  // ---------- points ----------
+  // Harder levels pay more. A streak of 3 doubles the stars, 6 triples them.
+  var LEVEL_POINTS = { easy: 1, medium: 2, hard: 3 };
+
+  function streakMultiplier(streak) {
+    if (streak >= 6) return 3;
+    if (streak >= 3) return 2;
+    return 1;
+  }
+
+  function renderHeader() {
+    document.getElementById("starCount").textContent = state.stars;
+    document.getElementById("streakCount").textContent = state.streak;
+    var mult = streakMultiplier(state.streak);
+    var multEl = document.getElementById("multPill");
+    var streakChip = document.getElementById("streakChip");
+    if (mult > 1) {
+      multEl.hidden = false;
+      multEl.textContent = "x" + mult;
+      streakChip.classList.add("hot");
+    } else {
+      multEl.hidden = true;
+      streakChip.classList.remove("hot");
+    }
+    var soundBtn = document.getElementById("soundBtn");
+    if (state.sound) {
+      soundBtn.textContent = "\uD83D\uDD0A";
+      soundBtn.setAttribute("aria-label", "Sound on");
+    } else {
+      soundBtn.textContent = "\uD83D\uDD07";
+      soundBtn.setAttribute("aria-label", "Sound off");
+    }
+    renderChestChip();
+    renderRank();
+  }
+
+  function afterStarsChanged(oldStars) {
+    checkUnlocks(oldStars);
+    checkRank(oldStars);
+    checkChests(oldStars);
+  }
+
+  // Called when an answer is right. firstTry answers get the full points.
+  function award(isSetGame, t, firstTry, fromEl) {
+    var m = t % 60;
+    var oldStars = state.stars;
+    state.streak += 1;
+    if (state.streak > state.bestStreak) state.bestStreak = state.streak;
+
+    var points = 1;
+    var mult = 1;
+    if (firstTry) {
+      var base = LEVEL_POINTS[state.level] || 1;
+      if (isSetGame) base += 1;
+      mult = streakMultiplier(state.streak);
+      points = base * mult;
+    }
+    state.stars += points;
+
+    state.counts.correct += 1;
+    if (m === 15 || m === 30 || m === 45) state.counts.quarter += 1;
+    if (m > 30) state.counts.toRight += 1;
+    if (state.level === "hard") state.counts.hardRight += 1;
+    if (isSetGame) state.counts.setRight += 1;
+
+    var label = "+" + points + " \u2605";
+    if (mult > 1) label += " x" + mult;
+    flyStars(label, fromEl);
+
+    if (state.streak === 3) {
+      showToast("\uD83D\uDD25 Hot streak! Stars x2");
+    }
+    if (state.streak === 6) {
+      showToast("\uD83D\uDD25\uD83D\uDD25 On fire! Stars x3");
+      confetti();
+    }
+    saveState();
+    renderHeader();
+    afterStarsChanged(oldStars);
+    checkBadges();
+  }
+
+  function missed() {
+    if (state.streak >= 3) {
+      showToast("Streak over at " + state.streak + ". Start a new one!");
+    }
+    state.streak = 0;
+    saveState();
+    renderHeader();
+  }
+
+  // ---------- modes ----------
+  var panel = document.getElementById("panelBody");
+  var mode = "play";
+  var MODE_COLOURS = { play: "--c-play", read: "--c-read", set: "--c-set", story: "--c-story", speed: "--c-speed" };
+
+  function setMode(newMode) {
+    stopSpeed();
+    mode = newMode;
+    app.style.setProperty("--mode", "var(" + MODE_COLOURS[mode] + ")");
+    var tabs = document.querySelectorAll(".tab");
+    for (var i = 0; i < tabs.length; i++) {
+      var on = tabs[i].getAttribute("data-mode") === mode;
+      tabs[i].setAttribute("aria-selected", on ? "true" : "false");
+    }
+    if (mode === "play") startPlay();
+    if (mode === "read") newReadQuestion();
+    if (mode === "set") newSetQuestion();
+    if (mode === "story") showStory(true);
+    if (mode === "speed") showSpeedStart();
+  }
+
+  // Play clock
+  function startPlay() {
+    snap = 1;
+    nudgeStep = 5;
+    updateNudgeLabels();
+    setClockLive(true);
+    say("Drag my clock hands!");
+    clearBox(panel);
+    var readout = make("div", "readout big");
+    var digital = make("span", "digital");
+    digital.id = "liveDigital";
+    var words = make("span", "words");
+    words.id = "liveWords";
+    var sayBtn = makeButton("sayit", "sayBtn", "\uD83D\uDDE3 Say it");
+    readout.appendChild(digital);
+    readout.appendChild(words);
+    readout.appendChild(sayBtn);
+    panel.appendChild(readout);
+    sayBtn.addEventListener("click", function () {
+      speakTime(T);
+    });
+    lastSpecial = "";
+    renderClock();
+    onClockChanged();
+  }
+
+  // Reads the time out loud, so the kid hears how it's said.
+  function speakTime(t) {
+    try {
+      if (!window.speechSynthesis) return;
+      window.speechSynthesis.cancel();
+      var talk = new SpeechSynthesisUtterance("It's " + timeWords(t));
+      talk.rate = 0.9;
+      talk.pitch = 1.2;
+      window.speechSynthesis.speak(talk);
+    } catch (e) {}
+    hop();
+  }
+
+  // What time? (read the clock)
+  var read = { time: 0, kind: "words", tries: 0, done: false };
+
+  function newReadQuestion() {
+    setClockLive(false);
+    read.time = freshTime();
+    read.kind = Math.random() < 0.5 ? "words" : "digital";
+    read.tries = 0;
+    read.done = false;
+    T = read.time;
+    renderClock();
+    wiggleClock();
+    say("What time does my clock say?");
+
+    var options = buildOptions(read.time, read.kind, 4);
+    clearBox(panel);
+    var prompt = make("p", "prompt", "What time is it? ");
+    var tagText = "digital";
+    if (read.kind === "words") tagText = "in words";
+    prompt.appendChild(make("span", "tag", tagText));
+    panel.appendChild(prompt);
+    var box = make("div", "options");
+    box.id = "opts";
+    panel.appendChild(box);
+    panel.appendChild(makeFeedback());
+    var nextRow = make("div", "row");
+    nextRow.id = "nextRow";
+    nextRow.hidden = true;
+    nextRow.appendChild(makeButton("primary", "nextBtn", "Next \u25B6"));
+    panel.appendChild(nextRow);
+
+    for (var i = 0; i < options.length; i++) {
+      box.appendChild(makeOption(options[i], onReadPick));
+    }
+    document.getElementById("nextBtn").addEventListener("click", newReadQuestion);
+  }
+
+  function makeOption(option, handler) {
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "opt";
+    btn.textContent = option.text;
+    btn.addEventListener("click", function () {
+      handler(option, btn);
+    });
+    return btn;
+  }
+
+  function lockOptions() {
+    var all = document.querySelectorAll("#opts .opt");
+    for (var i = 0; i < all.length; i++) {
+      all[i].disabled = true;
+    }
+  }
+
+  function showFeedback(kind, text) {
+    var fb = document.getElementById("fb");
+    fb.hidden = false;
+    fb.className = "feedback " + kind;
+    fb.textContent = text;
+  }
+
+  function onReadPick(option, btn) {
+    if (read.done) return;
+    if (option.right) {
+      read.done = true;
+      btn.classList.add("right");
+      lockOptions();
+      soundRight();
+      hop();
+      if (read.tries === 0) {
+        award(false, read.time, true, btn);
+        say(pick(PRAISE));
+      } else {
+        say("You got it!");
+      }
+      showFeedback("good", timeDigital(read.time) + " = " + timeWords(read.time));
+      document.getElementById("nextRow").hidden = false;
+      return;
+    }
+
+    read.tries += 1;
+    btn.classList.add("wrong");
+    btn.disabled = true;
+    soundWrong();
+    if (read.tries === 1) missed();
+    say(pick(OOPS));
+    var why = option.why;
+    if (!why) why = explainTime(read.time);
+    showFeedback("bad", why);
+
+    if (read.tries >= 2) {
+      read.done = true;
+      var all = document.querySelectorAll("#opts .opt");
+      for (var i = 0; i < all.length; i++) {
+        if (all[i].textContent === formatTime(read.time, read.kind)) all[i].classList.add("right");
+        all[i].disabled = true;
+      }
+      showFeedback("bad", why + " Answer: " + timeWords(read.time) + " (" + timeDigital(read.time) + ").");
+      document.getElementById("nextRow").hidden = false;
+    }
+  }
+
+  // Set it! (move the hands)
+  var setGame = { target: 0, kind: "words", tries: 0, done: false };
+
+  function newSetQuestion() {
+    setGame.target = freshTime();
+    setGame.kind = Math.random() < 0.5 ? "words" : "digital";
+    setGame.tries = 0;
+    setGame.done = false;
+    if (setGame.target % 5 === 0) {
+      snap = 5;
+    } else {
+      snap = 1;
+    }
+    nudgeStep = snap;
+    updateNudgeLabels();
+    setClockLive(true);
+
+    T = 12 * 60;
+    if (setGame.target === 0) T = 6 * 60;
+    renderClock();
+    say("Make my clock say this!");
+
+    clearBox(panel);
+    panel.appendChild(make("p", "prompt", "Make it:"));
+    panel.appendChild(make("p", "target", formatTime(setGame.target, setGame.kind)));
+    panel.appendChild(make("p", "muted", "Long hand first, then short hand."));
+    panel.appendChild(makeCheckRow());
+    panel.appendChild(makeFeedback());
+
+    document.getElementById("checkBtn").addEventListener("click", checkSet);
+    document.getElementById("showBtn").addEventListener("click", showSetAnswer);
+    document.getElementById("nextBtn").addEventListener("click", newSetQuestion);
+  }
+
+  function setHint(target) {
+    var th = Math.floor(target / 60);
+    var tm = target % 60;
+    var cm = T % 60;
+    if (cm !== tm) {
+      if (tm === 0) return "Long hand: straight up at 12.";
+      if (tm % 5 === 0) {
+        if (tm > 30) return "Long hand: on the " + (tm / 5) + " (" + (60 - tm) + " minutes before 12).";
+        return "Long hand: on the " + (tm / 5) + " (count by 5s to " + tm + ").";
+      }
+      return "Long hand: " + tm + " little marks past 12.";
+    }
+    if (tm === 0) return "Long hand \u2713 Now short hand: right on " + hourName(th) + ".";
+    if (tm <= 30) return "Long hand \u2713 Now short hand: just past " + hourName(th) + ".";
+    return "Long hand \u2713 Now short hand: between " + hourName(th) + " and " + hourName(th + 1) + ", close to " + hourName(th + 1) + ".";
+  }
+
+  function finishSet() {
+    setGame.done = true;
+    setClockLive(false);
+    document.getElementById("checkBtn").hidden = true;
+    document.getElementById("showBtn").hidden = true;
+    document.getElementById("nextBtn").hidden = false;
+  }
+
+  function checkSet() {
+    if (setGame.done) return;
+    var checkBtn = document.getElementById("checkBtn");
+    if (wrapTime(T) === setGame.target) {
+      soundRight();
+      hop();
+      wiggleClock();
+      if (setGame.tries === 0) {
+        award(true, setGame.target, true, checkBtn);
+        say(pick(PRAISE));
+      } else {
+        award(true, setGame.target, false, checkBtn);
+        say("You got it!");
+      }
+      showFeedback("good", "Spot on! " + timeWords(setGame.target) + " = " + timeDigital(setGame.target));
+      finishSet();
+      return;
+    }
+    setGame.tries += 1;
+    soundWrong();
+    if (setGame.tries === 1) missed();
+    say(pick(OOPS));
+    showFeedback("bad", setHint(setGame.target));
+    if (setGame.tries >= 2) {
+      document.getElementById("showBtn").hidden = false;
+    }
+  }
+
+  function showSetAnswer() {
+    showFeedback("info", explainTime(setGame.target));
+    say("Watch my hands move!");
+    finishSet();
+    animateClockTo(setGame.target);
+  }
+
+  // Slides the hands to a time so the kid can watch how they move.
+  function animateClockTo(target) {
+    var startT = T;
+    var diff = wrapTime(target - startT);
+    if (diff > 360) diff = diff - 720;
+    if (reduceMotion) {
+      T = target;
+      renderClock();
+      return;
+    }
+    var startedAt = null;
+    var duration = 1400;
+    function step(now) {
+      if (startedAt === null) startedAt = now;
+      var progress = (now - startedAt) / duration;
+      if (progress > 1) progress = 1;
+      T = wrapTime(startT + Math.round(diff * progress));
+      renderClock();
+      if (progress < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+
+  // Miro's day (a story: set the clock for each part of Miro's day)
+  var STORY = [
+    { icon: "\u23F0", what: "Miro wakes up", time: 7 * 60 },
+    { icon: "\uD83E\uDD63", what: "Breakfast", time: 7 * 60 + 15 },
+    { icon: "\uD83C\uDF92", what: "Off to school", time: 8 * 60 + 30 },
+    { icon: "\uD83D\uDCDA", what: "Maths starts", time: 9 * 60 + 45 },
+    { icon: "\uD83C\uDF4E", what: "Morning tea", time: 10 * 60 + 25 },
+    { icon: "\uD83E\uDD6A", what: "Lunch", time: 40 },
+    { icon: "\u26BD", what: "Play outside", time: 3 * 60 + 10 },
+    { icon: "\uD83C\uDFCA", what: "Swimming", time: 4 * 60 + 35 },
+    { icon: "\uD83C\uDF5D", what: "Dinner", time: 5 * 60 + 50 },
+    { icon: "\uD83D\uDE34", what: "Bedtime", time: 8 * 60 }
+  ];
+  var story = { tries: 0, done: false };
+
+  function storyKind(step) {
+    if (step % 2 === 0) return "words";
+    return "digital";
+  }
+
+  function storyPath() {
+    var path = make("div", "path");
+    path.setAttribute("aria-label", "Miro's day progress");
+    for (var i = 0; i < STORY.length; i++) {
+      var cls = "stop";
+      if (i < state.storyStep) cls = "stop done";
+      if (i === state.storyStep) cls = "stop now";
+      var stop = make("span", cls, STORY[i].icon);
+      stop.title = STORY[i].what;
+      path.appendChild(stop);
+    }
+    return path;
+  }
+
+  function showStory(fromTab) {
+    snap = 5;
+    nudgeStep = 5;
+    updateNudgeLabels();
+    story.tries = 0;
+    story.done = false;
+
+    if (state.storyStep >= STORY.length) {
+      setClockLive(false);
+      T = STORY[STORY.length - 1].time;
+      renderClock();
+      say("What a day! Night night \uD83C\uDF19");
+      clearBox(panel);
+      panel.appendChild(storyPath());
+      panel.appendChild(make("p", "party", "\uD83C\uDF89"));
+      panel.appendChild(make("p", "prompt center", "Miro's day is done!"));
+      if (state.storyMistakes === 0) {
+        panel.appendChild(make("p", "muted center", "No mistakes. Perfect day!"));
+      } else {
+        panel.appendChild(make("p", "muted center", "Mistakes: " + state.storyMistakes + ". Try for a perfect day!"));
+      }
+      var againRow = make("div", "row center");
+      var againBtn = makeButton("primary", "againBtn", "Start a new day \u2600");
+      againRow.appendChild(againBtn);
+      panel.appendChild(againRow);
+      againBtn.addEventListener("click", function () {
+        state.storyStep = 0;
+        state.storyMistakes = 0;
+        saveState();
+        showStory(false);
+      });
+      return;
+    }
+
+    var part = STORY[state.storyStep];
+    setClockLive(true);
+    if (state.storyStep === 0) {
+      T = 6 * 60;
+    } else {
+      T = STORY[state.storyStep - 1].time;
+    }
+    renderClock();
+    if (fromTab && state.storyStep > 0) {
+      say("Welcome back! Let's keep going.");
+    } else {
+      say("Help me with my day!");
+    }
+
+    clearBox(panel);
+    panel.appendChild(storyPath());
+    var scene = make("div", "scene");
+    scene.appendChild(make("span", "big", part.icon));
+    var sceneWords = make("div", "");
+    sceneWords.appendChild(make("p", "what", part.what + " at"));
+    sceneWords.appendChild(make("p", "target", formatTime(part.time, storyKind(state.storyStep))));
+    scene.appendChild(sceneWords);
+    panel.appendChild(scene);
+    panel.appendChild(makeCheckRow());
+    panel.appendChild(makeFeedback());
+
+    document.getElementById("checkBtn").addEventListener("click", checkStory);
+    document.getElementById("showBtn").addEventListener("click", showStoryAnswer);
+    document.getElementById("nextBtn").addEventListener("click", function () {
+      showStory(false);
+    });
+  }
+
+  function finishStoryStep() {
+    story.done = true;
+    setClockLive(false);
+    state.storyStep += 1;
+    if (state.storyStep >= STORY.length) {
+      state.storyDone = true;
+      if (state.storyMistakes === 0) state.storyPerfect = true;
+    }
+    saveState();
+    checkBadges();
+    document.getElementById("checkBtn").hidden = true;
+    document.getElementById("showBtn").hidden = true;
+    var nextBtn = document.getElementById("nextBtn");
+    nextBtn.hidden = false;
+    if (state.storyStep >= STORY.length) {
+      nextBtn.textContent = "Finish the day \uD83C\uDF89";
+    }
+  }
+
+  function checkStory() {
+    if (story.done) return;
+    var part = STORY[state.storyStep];
+    var target = wrapTime(part.time);
+    var checkBtn = document.getElementById("checkBtn");
+    if (wrapTime(T) === target) {
+      soundRight();
+      hop();
+      wiggleClock();
+      if (story.tries === 0) {
+        award(true, target, true, checkBtn);
+      } else {
+        award(true, target, false, checkBtn);
+      }
+      say(pick(PRAISE));
+      showFeedback("good", part.what + " at " + timeWords(target) + " (" + timeDigital(target) + ")");
+      finishStoryStep();
+      return;
+    }
+    story.tries += 1;
+    state.storyMistakes += 1;
+    saveState();
+    soundWrong();
+    if (story.tries === 1) missed();
+    say(pick(OOPS));
+    showFeedback("bad", setHint(target));
+    if (story.tries >= 2) {
+      document.getElementById("showBtn").hidden = false;
+    }
+  }
+
+  function showStoryAnswer() {
+    var target = wrapTime(STORY[state.storyStep].time);
+    showFeedback("info", explainTime(target));
+    say("Watch my hands move!");
+    animateClockTo(target);
+    finishStoryStep();
+  }
+
+  // Beat the clock (60-second race)
+  var speed = { running: false, score: 0, combo: 0, endAt: 0, timer: null, nextTimer: null, time: 0, kind: "words", locked: false };
+
+  function stopSpeed() {
+    if (speed.timer) clearInterval(speed.timer);
+    if (speed.nextTimer) clearTimeout(speed.nextTimer);
+    speed.timer = null;
+    speed.nextTimer = null;
+    speed.running = false;
+  }
+
+  function showSpeedStart() {
+    setClockLive(false);
+    T = freshTime();
+    renderClock();
+    say("How many can you read in 60 seconds?");
+    clearBox(panel);
+    panel.appendChild(make("p", "prompt", "60 seconds. Ready?"));
+    panel.appendChild(make("p", "muted", "Best: " + state.bestSpeed + " \u00B7 Get 15 for the Speedy badge"));
+    panel.appendChild(make("p", "muted", "\uD83D\uDD25 5 in a row = +3 seconds!"));
+    var row = make("div", "row");
+    var goBtn = makeButton("primary", "goBtn", "Start! \u26A1");
+    row.appendChild(goBtn);
+    panel.appendChild(row);
+    goBtn.addEventListener("click", startSpeed);
+  }
+
+  // 3, 2, 1, Go! before the race starts.
+  function startSpeed() {
+    stopSpeed();
+    setClockLive(false);
+    say("Get ready...");
+    var steps = ["3", "2", "1", "Go!"];
+    var index = 0;
+    function showStep() {
+      if (mode !== "speed") return;
+      if (index >= steps.length) {
+        runSpeed();
+        return;
+      }
+      clearBox(panel);
+      panel.appendChild(make("p", "countdown pop", steps[index]));
+      soundBeep(index === steps.length - 1);
+      index += 1;
+      speed.nextTimer = setTimeout(showStep, 700);
+    }
+    showStep();
+  }
+
+  function runSpeed() {
+    speed.running = true;
+    speed.score = 0;
+    speed.combo = 0;
+    speed.endAt = Date.now() + 60000;
+    say("Go go go!");
+    clearBox(panel);
+    var scoreline = make("div", "scoreline");
+    var scorePart = make("span", "", "\u2605 ");
+    var scoreNum = make("b", "", "0");
+    scoreNum.id = "spScore";
+    scorePart.appendChild(scoreNum);
+    var comboPart = make("span", "combo");
+    comboPart.id = "spCombo";
+    var timePart = make("span", "", "\u23F1 ");
+    var timeNum = make("b", "", "60");
+    timeNum.id = "spLeft";
+    timePart.appendChild(timeNum);
+    timePart.appendChild(document.createTextNode("s"));
+    scoreline.appendChild(scorePart);
+    scoreline.appendChild(comboPart);
+    scoreline.appendChild(timePart);
+    panel.appendChild(scoreline);
+    var timebar = make("div", "timebar");
+    var bar = make("div", "");
+    bar.id = "spBar";
+    timebar.appendChild(bar);
+    panel.appendChild(timebar);
+    panel.appendChild(make("p", "prompt", "What time is it?"));
+    var raceBox = make("div", "options three");
+    raceBox.id = "opts";
+    panel.appendChild(raceBox);
+    panel.appendChild(makeFeedback());
+    speed.timer = setInterval(tickSpeed, 100);
+    nextSpeedQuestion();
+  }
+
+  function tickSpeed() {
+    var left = speed.endAt - Date.now();
+    if (left <= 0) {
+      endSpeed();
+      return;
+    }
+    var secs = Math.ceil(left / 1000);
+    var leftEl = document.getElementById("spLeft");
+    var bar = document.getElementById("spBar");
+    if (leftEl) leftEl.textContent = secs;
+    var percent = left / 600;
+    if (percent > 100) percent = 100;
+    if (bar) bar.style.width = percent + "%";
+  }
+
+  function nextSpeedQuestion() {
+    if (!speed.running) return;
+    speed.locked = false;
+    speed.time = freshTime();
+    speed.kind = Math.random() < 0.5 ? "words" : "digital";
+    T = speed.time;
+    renderClock();
+    var fb = document.getElementById("fb");
+    if (fb) fb.hidden = true;
+    var options = buildOptions(speed.time, speed.kind, 3);
+    var box = document.getElementById("opts");
+    clearBox(box);
+    for (var i = 0; i < options.length; i++) {
+      box.appendChild(makeOption(options[i], onSpeedPick));
+    }
+  }
+
+  function onSpeedPick(option, btn) {
+    if (!speed.running || speed.locked) return;
+    speed.locked = true;
+    var wait = 300;
+    if (option.right) {
+      btn.classList.add("right");
+      speed.score += 1;
+      document.getElementById("spScore").textContent = speed.score;
+      soundRight();
+      award(false, speed.time, true, btn);
+      speed.combo += 1;
+      if (speed.combo % 5 === 0) {
+        speed.endAt += 3000;
+        flyText("+3s \u23F1", document.getElementById("spLeft"));
+        showFeedback("good", "\uD83D\uDD25 " + speed.combo + " in a row! +3 seconds");
+      } else {
+        showFeedback("good", pick(PRAISE));
+      }
+      updateCombo();
+    } else {
+      speed.combo = 0;
+      updateCombo();
+      btn.classList.add("wrong");
+      var all = document.querySelectorAll("#opts .opt");
+      for (var i = 0; i < all.length; i++) {
+        if (all[i].textContent === formatTime(speed.time, speed.kind)) all[i].classList.add("right");
+      }
+      soundWrong();
+      missed();
+      showFeedback("bad", "It was " + timeWords(speed.time) + " (" + timeDigital(speed.time) + ")");
+      wait = 1100;
+    }
+    speed.nextTimer = setTimeout(nextSpeedQuestion, wait);
+  }
+
+  function updateCombo() {
+    var el = document.getElementById("spCombo");
+    if (!el) return;
+    if (speed.combo >= 2) {
+      el.textContent = "\uD83D\uDD25 x" + speed.combo;
+    } else {
+      el.textContent = "";
+    }
+  }
+
+  function endSpeed() {
+    stopSpeed();
+    setTimeout(showNextOverlay, 600);
+    var isBest = false;
+    if (speed.score > state.bestSpeed) {
+      state.bestSpeed = speed.score;
+      isBest = true;
+      saveState();
+    }
+    checkBadges();
+    hop();
+    if (isBest && speed.score > 0) {
+      say("New best score! Ka pai!");
+      confetti();
+    } else {
+      say("Time's up! Another go?");
+    }
+    clearBox(panel);
+    panel.appendChild(make("p", "bigscore", String(speed.score)));
+    panel.appendChild(make("p", "muted", "clocks in 60 seconds \u00B7 Best: " + state.bestSpeed));
+    var row = make("div", "row");
+    var goBtn = makeButton("primary", "goBtn", "Play again \u26A1");
+    row.appendChild(goBtn);
+    panel.appendChild(row);
+    goBtn.addEventListener("click", startSpeed);
+  }
+
+  // ---------- controls ----------
+  var tabButtons = document.querySelectorAll(".tab");
+  for (var i = 0; i < tabButtons.length; i++) {
+    tabButtons[i].addEventListener("click", function () {
+      setMode(this.getAttribute("data-mode"));
+    });
+  }
+
+  function renderLevel() {
+    var btns = document.querySelectorAll(".seg button");
+    for (var j = 0; j < btns.length; j++) {
+      var on = btns[j].getAttribute("data-level") === state.level;
+      btns[j].setAttribute("aria-pressed", on ? "true" : "false");
+    }
+  }
+
+  var levelButtons = document.querySelectorAll(".seg button");
+  for (var k = 0; k < levelButtons.length; k++) {
+    levelButtons[k].addEventListener("click", function () {
+      state.level = this.getAttribute("data-level");
+      saveState();
+      renderLevel();
+      if (mode !== "play") setMode(mode);
+    });
+  }
+
+  document.getElementById("helperToggle").addEventListener("change", function () {
+    state.helper = this.checked;
+    saveState();
+    renderHelper();
+  });
+
+  document.getElementById("soundBtn").addEventListener("click", function () {
+    state.sound = !state.sound;
+    saveState();
+    renderHeader();
+    if (state.sound) soundRight();
+  });
+
+  // ---------- start ----------
+  // Each step runs on its own, so if one breaks the others still work.
+  var startSteps = [loadState, buildClock, renderHelper, renderLevel, renderHeader, renderBadges, renderOutfit, renderWardrobe, renderStickers];
+  for (var s = 0; s < startSteps.length; s++) {
+    try {
+      startSteps[s]();
+    } catch (e) {
+      showError(e.message);
+    }
+  }
+  try {
+    setMode("play");
+  } catch (e) {
+    showError(e.message);
+  }
+})();
+</script>
