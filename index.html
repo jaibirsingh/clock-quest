@@ -1,5 +1,5 @@
 <meta charset="utf-8">
-<title>Clock Quest</title>
+<title>Brain Burps</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -296,7 +296,30 @@ button:focus-visible, input:focus-visible, summary:focus-visible { outline: 3px 
 .ovtitle { font-family: var(--display); font-weight: 800; font-size: 2rem; line-height: 1.1; margin: 0; color: var(--c-set); text-wrap: balance; }
 .ovtext { margin: 0 0 8px; font-weight: 800; font-size: 1.1rem; }
 
+/* welcome screen */
+.welcome { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 35; background-color: var(--sky); background-image: radial-gradient(var(--dot) 3px, transparent 3.5px); background-size: 34px 34px; display: flex; align-items: center; justify-content: center; padding: 16px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.wcard { background: var(--card); border-radius: 30px; padding: 26px 20px; width: 100%; max-width: 580px; text-align: center; box-shadow: 0 8px 0 var(--c-set); margin: auto; }
+.wbrain { font-size: 6.5rem; line-height: 1; display: inline-block; animation: wobble 2.4s ease-in-out infinite; }
+@keyframes wobble { 0%, 100% { transform: rotate(0) scale(1); } 20% { transform: rotate(-8deg) scale(1.05); } 40% { transform: rotate(8deg) scale(1.05); } 60% { transform: rotate(0) scale(1); } }
+.wtitle { font-family: var(--display); font-weight: 800; font-size: 3.2rem; line-height: 1.05; margin: 8px 0 18px; color: var(--ink); }
+.wtitle span { color: var(--c-set); }
+.wtitle.small { font-size: 1.9rem; margin: 0 0 8px; text-wrap: balance; }
+.wask { font-family: var(--display); font-weight: 800; font-size: 1.45rem; color: var(--c-read); margin: 0 0 16px; }
+.wmodule { font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.85rem; margin: 0 0 8px; text-align: left; }
+.wstart { border: 0; background: var(--c-set); color: #FFFFFF; font-family: var(--display); font-weight: 800; font-size: 1.7rem; border-radius: 999px; padding: 14px 36px; cursor: pointer; box-shadow: 0 5px 0 #B85A08; }
+.wstart:active { transform: translateY(3px); box-shadow: 0 2px 0 #B85A08; }
+.wgames { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.wgame { --c: var(--c-play); border: 0; background: var(--c); color: #FFFFFF; border-radius: 18px; padding: 12px 10px; font-family: var(--display); font-weight: 800; font-size: 1.25rem; line-height: 1.1; cursor: pointer; display: flex; align-items: center; gap: 10px; text-align: left; min-width: 0; box-shadow: 0 4px 0 rgba(22, 50, 79, 0.35); }
+.wgame:active { transform: translateY(2px); }
+.wgame[data-go="read"] { --c: var(--c-read); }
+.wgame[data-go="set"] { --c: var(--c-set); }
+.wgame[data-go="story"] { --c: var(--c-story); }
+.wgame[data-go="speed"] { --c: var(--c-speed); grid-column: 1 / -1; }
+.wgame .ti { width: 40px; height: 40px; flex: none; border-radius: 50%; background: #FFFFFF; color: var(--c); display: flex; align-items: center; justify-content: center; font-size: 1.3rem; }
+@media (max-width: 420px) { .wtitle.small { font-size: 1.6rem; } .wgame { font-size: 1.1rem; } }
+
 @media (prefers-reduced-motion: reduce) {
+  .wbrain { animation: none; }
   .bird.hop, .chip.bump, #clock.wiggle, .flyer, .countdown.pop, .chip.chest, .ovcard, .ovbig.shake { animation: none; }
   .rankmeter div { transition: none; }
   .flyer { display: none; }
@@ -308,13 +331,14 @@ button:focus-visible, input:focus-visible, summary:focus-visible { outline: 3px 
   <noscript><p class="errbox">This viewer has switched off the game's code, so the clock can't move. Open the game file in Safari or Chrome instead.</p></noscript>
   <header class="top">
     <div class="brand">
-      <h1>Clock <span class="q">Quest</span></h1>
-      <small>Time &middot; Unit 5</small>
+      <h1>Brain <span class="q">Burps</span></h1>
+      <small>Clock Quest &middot; Time</small>
     </div>
     <div class="chips">
       <div class="chip stars" id="starChip"><span class="ic">&#9733;</span><b id="starCount">0</b></div>
       <button class="chip btn chest" id="chestBtn" type="button" hidden aria-label="Open treasure chest"><span class="ic">&#127873;</span><b id="chestCount">1</b></button>
       <div class="chip" id="streakChip" title="Right answers in a row"><span class="ic">&#128293;</span><b id="streakCount">0</b><span class="mult" id="multPill" hidden>x2</span></div>
+      <button class="chip btn" id="homeBtn" type="button" aria-label="Home">&#127968;</button>
       <button class="chip btn" id="soundBtn" type="button" aria-label="Sound on">&#128266;</button>
     </div>
   </header>
@@ -532,6 +556,27 @@ button:focus-visible, input:focus-visible, summary:focus-visible { outline: 3px 
   </details>
 </div>
 
+<div class="welcome" id="welcome" hidden>
+  <div class="wcard">
+    <div class="wstep" id="startStep">
+      <div class="wbrain" id="wBrain">&#129504;</div>
+      <p class="wtitle">Brain <span>Burps</span></p>
+      <button class="wstart" type="button" id="startBtn">Tap to start! &#127877;</button>
+    </div>
+    <div class="wstep" id="chooseStep" hidden>
+      <p class="wtitle small">Welcome Jhilmil and Piku to Brain Burps game.</p>
+      <p class="wask">What would you like to play today?</p>
+      <p class="wmodule">&#9200; Clock Quest</p>
+      <div class="wgames">
+        <button class="wgame" type="button" data-go="play"><span class="ti">&#127744;</span>Play clock</button>
+        <button class="wgame" type="button" data-go="read"><span class="ti">&#128064;</span>What time?</button>
+        <button class="wgame" type="button" data-go="set"><span class="ti">&#9995;</span>Set it!</button>
+        <button class="wgame" type="button" data-go="story"><span class="ti">&#127774;</span>Miro's day</button>
+        <button class="wgame" type="button" data-go="speed"><span class="ti">&#9889;</span>Beat the clock</button>
+      </div>
+    </div>
+  </div>
+</div>
 <div class="toast" id="toast" hidden></div>
 <div class="overlay" id="overlay" hidden>
   <div class="ovcard" role="dialog" aria-modal="true" aria-labelledby="ovTitle">
@@ -1721,16 +1766,79 @@ window.addEventListener("error", function (evt) {
 
   // Reads the time out loud, so the kid hears how it's said.
   function speakTime(t) {
-    try {
-      if (!window.speechSynthesis) return;
-      window.speechSynthesis.cancel();
-      var talk = new SpeechSynthesisUtterance("It's " + timeWords(t));
-      talk.rate = 0.9;
-      talk.pitch = 1.2;
-      window.speechSynthesis.speak(talk);
-    } catch (e) {}
+    santaSay("Ho ho! It's " + timeWords(t) + ".");
     hop();
   }
+
+  // ---------- Santa voice (used for everything the game says out loud) ----------
+  // A deep, slow, jolly voice. Deep male voices are tried first, in this order.
+  var SANTA_NAMES = ["Daniel", "Arthur", "Gordon", "Aaron", "Fred", "Google UK English Male", "Microsoft George", "Microsoft David", "Alex"];
+  var santaVoice = null;
+  var lastTalk = null;
+
+  function pickSantaVoice() {
+    if (!window.speechSynthesis) return;
+    var voices = window.speechSynthesis.getVoices();
+    if (!voices || voices.length === 0) return;
+    for (var n = 0; n < SANTA_NAMES.length; n++) {
+      for (var v = 0; v < voices.length; v++) {
+        if (voices[v].name.indexOf(SANTA_NAMES[n]) !== -1 && voices[v].lang.indexOf("en") === 0) {
+          santaVoice = voices[v];
+          return;
+        }
+      }
+    }
+    for (var w = 0; w < voices.length; w++) {
+      if (voices[w].lang.indexOf("en") === 0) {
+        santaVoice = voices[w];
+        return;
+      }
+    }
+  }
+
+  // Spell the names the way they sound, so the voice says them right.
+  function sayable(text) {
+    var out = text.replace(/Jhilmil/g, "Chill-mill");
+    out = out.replace(/Piku/g, "Pee-koo");
+    return out;
+  }
+
+  function santaSay(text) {
+    if (!state.sound) return;
+    try {
+      if (!window.speechSynthesis || !window.SpeechSynthesisUtterance) return;
+      if (!santaVoice) pickSantaVoice();
+      var talk = new SpeechSynthesisUtterance(sayable(text));
+      talk.pitch = 0.55;
+      talk.rate = 0.85;
+      talk.volume = 1;
+      if (santaVoice) {
+        talk.voice = santaVoice;
+        talk.lang = santaVoice.lang;
+      }
+      lastTalk = talk;
+      var synth = window.speechSynthesis;
+      if (synth.speaking || synth.pending) {
+        synth.cancel();
+        setTimeout(function () {
+          synth.speak(talk);
+        }, 80);
+      } else {
+        synth.speak(talk);
+      }
+    } catch (e) {}
+  }
+
+  try {
+    if (window.speechSynthesis) {
+      pickSantaVoice();
+      if (window.speechSynthesis.addEventListener) {
+        window.speechSynthesis.addEventListener("voiceschanged", pickSantaVoice);
+      } else {
+        window.speechSynthesis.onvoiceschanged = pickSantaVoice;
+      }
+    }
+  } catch (e) {}
 
   // What time? (read the clock)
   var read = { time: 0, kind: "words", tries: 0, done: false };
@@ -2335,9 +2443,87 @@ window.addEventListener("error", function (evt) {
 
   document.getElementById("soundBtn").addEventListener("click", function () {
     state.sound = !state.sound;
+    if (!state.sound) {
+      try {
+        if (window.speechSynthesis) window.speechSynthesis.cancel();
+      } catch (e) {}
+    }
     saveState();
     renderHeader();
     if (state.sound) soundRight();
+  });
+
+  // ---------- welcome screen ----------
+  var welcomeEl = document.getElementById("welcome");
+  var WELCOME_TEXT = "Welcome Jhilmil and Piku to Brain Burps game. What would you like to play today?";
+
+  // A silly burp sound, made by the device (no sound file needed).
+  function soundBurp() {
+    if (!state.sound) return;
+    try {
+      if (!audioCtx) {
+        var Ctx = window.AudioContext || window.webkitAudioContext;
+        if (!Ctx) return;
+        audioCtx = new Ctx();
+      }
+      if (audioCtx.state === "suspended" && audioCtx.resume) {
+        audioCtx.resume();
+      }
+      var now = audioCtx.currentTime;
+      var osc = audioCtx.createOscillator();
+      var filter = audioCtx.createBiquadFilter();
+      var gain = audioCtx.createGain();
+      osc.type = "sawtooth";
+      osc.frequency.setValueAtTime(95, now);
+      for (var i = 1; i <= 7; i++) {
+        osc.frequency.setValueAtTime(70 + Math.random() * 45, now + i * 0.045);
+      }
+      osc.frequency.linearRampToValueAtTime(55, now + 0.38);
+      filter.type = "lowpass";
+      filter.frequency.value = 520;
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(0.55, now + 0.04);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.38);
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(now);
+      osc.stop(now + 0.42);
+    } catch (e) {}
+  }
+
+  // firstTime: show "Tap to start" (iPads only let a page talk after a tap).
+  function showWelcome(firstTime) {
+    stopSpeed();
+    welcomeEl.hidden = false;
+    document.getElementById("startStep").hidden = !firstTime;
+    document.getElementById("chooseStep").hidden = firstTime;
+    if (!firstTime) {
+      santaSay("Ho ho! What would you like to play today?");
+    }
+  }
+
+  document.getElementById("startBtn").addEventListener("click", function () {
+    // The voice must start inside this tap, or iPads stay silent.
+    santaSay("Ho ho ho! " + WELCOME_TEXT);
+    soundBurp();
+    document.getElementById("startStep").hidden = true;
+    document.getElementById("chooseStep").hidden = false;
+  });
+
+  var gameButtons = document.querySelectorAll(".wgame");
+  for (var g = 0; g < gameButtons.length; g++) {
+    gameButtons[g].addEventListener("click", function () {
+      welcomeEl.hidden = true;
+      setMode(this.getAttribute("data-go"));
+      try {
+        window.scrollTo(0, 0);
+      } catch (e) {}
+    });
+  }
+
+  document.getElementById("homeBtn").addEventListener("click", function () {
+    showWelcome(false);
   });
 
   // ---------- start ----------
@@ -2352,6 +2538,11 @@ window.addEventListener("error", function (evt) {
   }
   try {
     setMode("play");
+  } catch (e) {
+    showError(e.message);
+  }
+  try {
+    showWelcome(true);
   } catch (e) {
     showError(e.message);
   }
