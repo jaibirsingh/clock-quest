@@ -253,6 +253,12 @@ button:focus-visible, input:focus-visible, summary:focus-visible { outline: 3px 
 .badge .bt span { font-size: 0.75rem; color: var(--muted); font-weight: 700; line-height: 1.15; display: block; }
 
 .grownups summary { cursor: pointer; font-size: 1.05rem; }
+.voicebox { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }
+.vlabel { font-weight: 800; }
+.vseg { display: inline-flex; background: var(--bubble); border-radius: 999px; padding: 4px; }
+.vseg button { border: 0; background: transparent; border-radius: 999px; padding: 5px 14px; font-weight: 800; cursor: pointer; color: var(--muted); }
+.vseg button[aria-pressed="true"] { background: var(--ink); color: #FFFFFF; }
+.vnote { margin: 6px 0 0; color: var(--muted); font-weight: 700; font-size: 0.9rem; }
 .grownups ul { margin: 8px 0 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; max-width: 65ch; font-weight: 600; }
 
 .toast {
@@ -544,6 +550,15 @@ button:focus-visible, input:focus-visible, summary:focus-visible { outline: 3px 
 
   <details class="card shadowcard grownups">
     <summary>Tips for grown-ups</summary>
+    <div class="voicebox">
+      <span class="vlabel">Santa voice on this device:</span>
+      <span class="vseg" role="group" aria-label="Santa voice">
+        <button type="button" id="voiceDeep">Deep</button>
+        <button type="button" id="voiceNatural">Natural</button>
+      </span>
+      <button class="ghost" type="button" id="voiceTest">&#128266; Test</button>
+    </div>
+    <p class="vnote">If the voice sounds shaky (common on Android phones), pick Natural.</p>
     <ul>
       <li>Start with 2 minutes of Play clock. Ask "where's the short hand now?"</li>
       <li>10 minutes a day beats 40 minutes once a week.</li>
@@ -617,6 +632,7 @@ window.addEventListener("error", function (evt) {
     storyMistakes: 0,
     storyDone: false,
     storyPerfect: false,
+    voiceStyle: "",
     chestsOpened: 0,
     stickers: {},
     badges: {},
@@ -1774,6 +1790,7 @@ window.addEventListener("error", function (evt) {
   // A deep, slow, jolly voice. Deep male voices are tried first, in this order.
   var SANTA_NAMES = ["Daniel", "Arthur", "Gordon", "Aaron", "Fred", "Google UK English Male", "Microsoft George", "Microsoft David", "Alex"];
   var santaVoice = null;
+  var santaIsDeepVoice = false;
   var lastTalk = null;
 
   function pickSantaVoice() {
@@ -1784,16 +1801,48 @@ window.addEventListener("error", function (evt) {
       for (var v = 0; v < voices.length; v++) {
         if (voices[v].name.indexOf(SANTA_NAMES[n]) !== -1 && voices[v].lang.indexOf("en") === 0) {
           santaVoice = voices[v];
+          santaIsDeepVoice = true;
+          renderVoiceButtons();
           return;
         }
+      }
+    }
+    // No known deep voice (Android phones usually only have a lady's voice).
+    // Prefer a British English voice, then any English voice.
+    santaIsDeepVoice = false;
+    for (var b = 0; b < voices.length; b++) {
+      var lang = voices[b].lang.replace("_", "-");
+      if (lang.indexOf("en-GB") === 0) {
+        santaVoice = voices[b];
+        renderVoiceButtons();
+        return;
       }
     }
     for (var w = 0; w < voices.length; w++) {
       if (voices[w].lang.indexOf("en") === 0) {
         santaVoice = voices[w];
+        renderVoiceButtons();
         return;
       }
     }
+  }
+
+  // "deep" or "natural". The grown-up's choice wins; otherwise go deep
+  // only when we found a proper deep voice, because pulling a lady's voice
+  // down that far makes it sound shaky.
+  function currentVoiceStyle() {
+    if (state.voiceStyle === "deep" || state.voiceStyle === "natural") return state.voiceStyle;
+    if (santaIsDeepVoice) return "deep";
+    return "natural";
+  }
+
+  function renderVoiceButtons() {
+    var deepBtn = document.getElementById("voiceDeep");
+    var naturalBtn = document.getElementById("voiceNatural");
+    if (!deepBtn || !naturalBtn) return;
+    var style = currentVoiceStyle();
+    deepBtn.setAttribute("aria-pressed", style === "deep" ? "true" : "false");
+    naturalBtn.setAttribute("aria-pressed", style === "natural" ? "true" : "false");
   }
 
   // Spell the names the way they sound, so the voice says them right.
@@ -1809,8 +1858,13 @@ window.addEventListener("error", function (evt) {
       if (!window.speechSynthesis || !window.SpeechSynthesisUtterance) return;
       if (!santaVoice) pickSantaVoice();
       var talk = new SpeechSynthesisUtterance(sayable(text));
-      talk.pitch = 0.55;
-      talk.rate = 0.85;
+      if (currentVoiceStyle() === "deep") {
+        talk.pitch = 0.55;
+        talk.rate = 0.85;
+      } else {
+        talk.pitch = 0.95;
+        talk.rate = 0.9;
+      }
       talk.volume = 1;
       if (santaVoice) {
         talk.voice = santaVoice;
@@ -2522,6 +2576,22 @@ window.addEventListener("error", function (evt) {
     });
   }
 
+  function chooseVoice(style) {
+    state.voiceStyle = style;
+    saveState();
+    renderVoiceButtons();
+    santaSay("Ho ho ho! Hello Jhilmil and Piku!");
+  }
+  document.getElementById("voiceDeep").addEventListener("click", function () {
+    chooseVoice("deep");
+  });
+  document.getElementById("voiceNatural").addEventListener("click", function () {
+    chooseVoice("natural");
+  });
+  document.getElementById("voiceTest").addEventListener("click", function () {
+    santaSay("Ho ho ho! Hello Jhilmil and Piku!");
+  });
+
   document.getElementById("homeBtn").addEventListener("click", function () {
     showWelcome(false);
   });
@@ -2538,6 +2608,11 @@ window.addEventListener("error", function (evt) {
   }
   try {
     setMode("play");
+  } catch (e) {
+    showError(e.message);
+  }
+  try {
+    renderVoiceButtons();
   } catch (e) {
     showError(e.message);
   }
